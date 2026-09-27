@@ -115,6 +115,49 @@ docker build -t ews-mcp:dev .
 docker run --rm -p 8000:8000 --env-file .env -v ewsmcp-data:/data ews-mcp:dev
 ```
 
+### Multi-tenant HTTP mode
+
+One HTTP server can serve multiple mailboxes. Turn on header authentication
+and omit the single-mailbox `EWS_EMAIL`, `EWS_USERNAME`, and `EWS_PASSWORD`
+environment variables. Each request supplies its own Exchange credentials;
+server-owned capability tier, send kill-switch, recipient policies, and rate
+limits cannot be changed by a tenant:
+
+```bash
+EWS_SERVER_URL="https://mail.example.com/EWS/Exchange.asmx" \
+EWS_HTTP_HEADER_AUTH=true \
+MCP_TRANSPORT=http MCP_HOST=0.0.0.0 MCP_PORT=8000 \
+MCP_API_KEY="a-long-random-gateway-key" DATA_DIR=/data ewsmcp
+```
+
+Send these headers on every `/mcp` or `/api/tools/...` request:
+
+| Header | Required | Purpose |
+|---|---|---|
+| `X-EWS-Email` | yes | Mailbox primary SMTP address |
+| `X-EWS-Password` | yes | That mailbox's Exchange password |
+| `X-EWS-Username` | no | Login name; defaults to the email address |
+| `X-EWS-Server-URL` | no | Per-tenant endpoint override; must be listed in `EWS_HTTP_ALLOWED_SERVER_URLS` |
+| `Authorization: Bearer ...` | when configured | Shared HTTP gateway key (`MCP_API_KEY`) |
+
+For example, an MCP client configured with custom HTTP headers can connect to
+`https://your-proxy.example.com/mcp`; a REST call uses the same headers. The
+base `EWS_SERVER_URL` is the default endpoint and is always allowed. Add
+comma-separated endpoint URLs to `EWS_HTTP_ALLOWED_SERVER_URLS` before allowing
+tenants to select other Exchange servers; arbitrary URLs are rejected to avoid
+turning the service into an SSRF proxy. Tenant state (SQLite mirror, aliases,
+attachments, and audit chain) is stored below `DATA_DIR/tenants/` in separate
+opaque directories. Contexts are kept in a bounded LRU controlled by
+`EWS_HTTP_MAX_TENANTS` (default 32). Idle contexts are evicted first; if every
+slot is serving a request, new tenant identities receive HTTP 503 until a slot
+is free, so the cap is a hard resource bound.
+
+**Terminate TLS in front of the service.** The mailbox password is sent on
+every request. A non-loopback bind requires `MCP_API_KEY` unless
+`MCP_HTTP_ALLOW_UNAUTHENTICATED=true` is explicitly set for a trusted proxy
+that enforces authentication itself. Header-auth mode is HTTP-only; stdio
+continues to use the single mailbox configured in the environment.
+
 ## Why it looks like this
 
 - **Token economy.** One legacy detail call shipped 115 kB of duplicated
@@ -150,6 +193,10 @@ docker run --rm -p 8000:8000 --env-file .env -v ewsmcp-data:/data ews-mcp:dev
 | `SEND_CONFIRM_SECRET` | per-process | HMAC secret for confirm tokens (set it to survive restarts) |
 | `CONFIRM_TTL_SECONDS` | `600` | Confirm token lifetime |
 | `MCP_TRANSPORT` / `MCP_HOST` / `MCP_PORT` / `MCP_API_KEY` | stdio | HTTP serving + bearer auth (all unused in stdio mode) |
+| `EWS_HTTP_HEADER_AUTH` | `false` | HTTP multi-tenant mode: require mailbox credentials per request; requires `EWS_SERVER_URL` but not the single-mailbox credentials |
+| `EWS_HTTP_ALLOWED_SERVER_URLS` | — | Comma-separated allowlist for `X-EWS-Server-URL` endpoint overrides; base `EWS_SERVER_URL` is always allowed |
+| `EWS_HTTP_MAX_TENANTS` | `32` | Maximum idle/in-use tenant contexts retained (1–1024) |
+| `MCP_HTTP_ALLOW_UNAUTHENTICATED` | `false` | Explicit opt-out from the non-loopback bearer-key requirement; only use behind a trusted authenticating proxy |
 | `DATA_DIR` | `~/.ewsmcp` | Aliases, audit chain, cache mirror. Absolute; cloud-synced paths are refused (`DATA_DIR_ALLOW_SYNCED=true` to override) |
 | `EWS_CACHE_ENABLED` | `true` | The mirror; `false` = pure live EWS reads |
 | `EWS_CACHE_FOLDERS` | `inbox,sent` | Delta-synced folders |

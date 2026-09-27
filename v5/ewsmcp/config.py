@@ -18,8 +18,8 @@ class Settings(BaseSettings):
     )
 
     # --- Exchange upstream -------------------------------------------------
-    ews_server_url: str
-    ews_email: str
+    ews_server_url: Optional[str] = None
+    ews_email: Optional[str] = None
     ews_username: Optional[str] = None
     ews_password: Optional[str] = None
     # NEVER pin auth_type against this Exchange: the front door only works
@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     mcp_host: str = "127.0.0.1"
     mcp_port: int = 8000
     mcp_api_key: Optional[str] = None
+    # HTTP multi-tenant mode accepts each mailbox's credentials on each
+    # request. The Exchange endpoint and every safety policy stay server-owned.
+    ews_http_header_auth: bool = False
+    ews_http_max_tenants: int = Field(default=32, ge=1, le=1024)
+    ews_http_allowed_server_urls: str = ""
+    mcp_http_allow_unauthenticated: bool = False
     log_level: str = "INFO"
 
     # --- Storage (NEVER a synced folder) -------------------------------------
@@ -78,6 +84,21 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _resolve_data_dir(self) -> "Settings":
+        if not self.ews_server_url:
+            raise ValueError("EWS_SERVER_URL is required")
+        if not self.ews_http_header_auth and not self.ews_email:
+            raise ValueError("EWS_EMAIL is required unless EWS_HTTP_HEADER_AUTH=true")
+        if self.ews_http_header_auth and self.mcp_transport != "http":
+            raise ValueError("EWS_HTTP_HEADER_AUTH=true requires MCP_TRANSPORT=http")
+        if self.mcp_transport == "http":
+            loopback_hosts = {"127.0.0.1", "::1", "localhost"}
+            if (self.mcp_host not in loopback_hosts and not self.mcp_api_key
+                    and not self.mcp_http_allow_unauthenticated):
+                raise ValueError(
+                    "HTTP transport bound to a non-loopback address requires "
+                    "MCP_API_KEY. Set MCP_HTTP_ALLOW_UNAUTHENTICATED=true only "
+                    "behind a trusted authentication proxy."
+                )
         raw = self.data_dir or str(Path.home() / ".ewsmcp")
         resolved = Path(raw).expanduser().resolve()
         if not self.data_dir_allow_synced:

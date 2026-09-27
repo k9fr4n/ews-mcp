@@ -90,6 +90,7 @@ class Context:
     cache: Any = None  # CacheStore | None (None = cache disabled/broken)
     sync: Any = None  # SyncEngine | None
     semantic: Any = None  # SemanticIndex adapter | None
+    tenant_id: Optional[str] = None  # opaque, non-secret partition identifier
     registry: Dict[str, ToolSpec] = field(default_factory=dict)
     started_at: float = field(default_factory=time.time)
     counters: Dict[str, int] = field(default_factory=dict)
@@ -285,6 +286,10 @@ async def dispatch(ctx: Context, spec: ToolSpec, kwargs: Dict[str, Any],
     # (a leak here used to surface as TypeError → misleading 502).
     kwargs = dict(kwargs)
     confirm_token = kwargs.pop("confirm_token", None)
+    # send_draft's replay store is process-global; namespace its key so a
+    # caller cannot collide with or read another mailbox's replay receipt.
+    if ctx.tenant_id and isinstance(kwargs.get("idempotency_key"), str):
+        kwargs["idempotency_key"] = f"{ctx.tenant_id}:{kwargs['idempotency_key']}"
     try:
         # Kill-switch (policy precedes connectivity)
         if spec.side_effect_class == "send" and not ctx.settings.send_enabled:

@@ -68,6 +68,8 @@ docker run -d --name ews-mcp --env-file .env --network host \
 4.5 serves Streamable HTTP at `/mcp`, plain REST at `/api/tools/<name>`,
 and health at `/livez` `/readyz` `/health`. Legacy transport docs:
 [`docs/legacy/CONNECTION_GUIDE.md`](docs/legacy/CONNECTION_GUIDE.md).
+For a shared 4.5 HTTP deployment serving multiple mailboxes with per-request
+Exchange credentials, see the [multi-tenant HTTP setup](v5/README.md#multi-tenant-http-mode).
 
 ## What the assistant can do (4.5)
 

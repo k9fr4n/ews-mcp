@@ -457,3 +457,10 @@ def reset_aliaser_cache() -> None:
     """Drop all cached aliasers (tests only)."""
     with _ALIASERS_GUARD:
         _ALIASERS.clear()
+
+
+def evict_aliaser(memory_dir: str) -> None:
+    """Forget one idle tenant aliaser when its tenant context is evicted."""
+    key = str(Path(memory_dir).resolve())
+    with _ALIASERS_GUARD:
+        _ALIASERS.pop(key, None)

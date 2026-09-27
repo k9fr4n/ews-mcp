@@ -65,7 +65,8 @@ def chunk_text(text: str, size: int = CHUNK_CHARS) -> List[str]:
 class PgVectorSemanticIndex:
     """pgvector-backed index; embeddings from an Ollama server."""
 
-    def __init__(self, dsn: str, ollama_url: str, model: str = "bge-m3"):
+    def __init__(self, dsn: str, ollama_url: str, model: str = "bge-m3",
+                 schema: str = "ews"):
         if psycopg is None:
             raise RuntimeError(
                 "EWS_SEMANTIC_INDEX=pgvector requires the 'psycopg' package "
@@ -75,6 +76,9 @@ class PgVectorSemanticIndex:
         self.dsn = dsn
         self.ollama_url = ollama_url.rstrip("/")
         self.model = model
+        if not schema.replace("_", "").isalnum():
+            raise ValueError("invalid pgvector schema name")
+        self.schema = schema
         self._ensure_schema()
 
     # ------------------------------------------------------------ plumbing
@@ -84,11 +88,11 @@ class PgVectorSemanticIndex:
 
     def _ensure_schema(self) -> None:
         with self._conn() as conn:
-            conn.execute("CREATE SCHEMA IF NOT EXISTS ews")
+            conn.execute(f'CREATE SCHEMA IF NOT EXISTS "{self.schema}"')
             conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
             conn.execute(
                 f"""
-                CREATE TABLE IF NOT EXISTS ews.message_embeddings (
+                CREATE TABLE IF NOT EXISTS "{self.schema}".message_embeddings (
                     ews_id   text NOT NULL,
                     chunk    int  NOT NULL,
                     embedding vector({EMBED_DIM}),
@@ -113,7 +117,7 @@ class PgVectorSemanticIndex:
         try:
             with self._conn() as conn:
                 n = conn.execute(
-                    "SELECT COUNT(DISTINCT ews_id) FROM ews.message_embeddings"
+                    f'SELECT COUNT(DISTINCT ews_id) FROM "{self.schema}".message_embeddings'
                 ).fetchone()[0]
             self._embed(["ping"])
             return {"ok": True, "indexed_messages": int(n)}
@@ -128,12 +132,12 @@ class PgVectorSemanticIndex:
             vectors = self._embed(chunks)
             with self._conn() as conn:
                 conn.execute(
-                    "DELETE FROM ews.message_embeddings WHERE ews_id = %s",
+                    f'DELETE FROM "{self.schema}".message_embeddings WHERE ews_id = %s',
                     (item["ews_id"],),
                 )
                 for i, vec in enumerate(vectors):
                     conn.execute(
-                        "INSERT INTO ews.message_embeddings (ews_id, chunk, "
+                        f'INSERT INTO "{self.schema}".message_embeddings (ews_id, chunk, '
                         "embedding) VALUES (%s, %s, %s)",
                         (item["ews_id"], i, vec),
                     )
@@ -143,7 +147,7 @@ class PgVectorSemanticIndex:
             return
         with self._conn() as conn:
             conn.execute(
-                "DELETE FROM ews.message_embeddings WHERE ews_id = ANY(%s)",
+                f'DELETE FROM "{self.schema}".message_embeddings WHERE ews_id = ANY(%s)',
                 (ews_ids,),
             )
 
@@ -152,7 +156,7 @@ class PgVectorSemanticIndex:
         with self._conn() as conn:
             rows = conn.execute(
                 "SELECT ews_id, MIN(embedding <=> %s::vector) AS dist "
-                "FROM ews.message_embeddings GROUP BY ews_id "
+                f'FROM "{self.schema}".message_embeddings GROUP BY ews_id '
                 "ORDER BY dist ASC LIMIT %s",
                 (vec, top_k),
             ).fetchall()
@@ -162,10 +166,10 @@ class PgVectorSemanticIndex:
                       top_k: int = 5) -> List[Tuple[str, float]]:
         with self._conn() as conn:
             rows = conn.execute(
-                """
+                f"""
                 SELECT o.ews_id, MIN(o.embedding <=> s.embedding) AS dist
-                FROM ews.message_embeddings o,
-                     ews.message_embeddings s
+                FROM "{self.schema}".message_embeddings o,
+                     "{self.schema}".message_embeddings s
                 WHERE s.ews_id = %s AND s.chunk = 0 AND o.ews_id <> %s
                 GROUP BY o.ews_id ORDER BY dist ASC LIMIT %s
                 """,
@@ -174,7 +178,7 @@ class PgVectorSemanticIndex:
         return [(r[0], 1.0 - float(r[1])) for r in rows]
 
 
-def build_semantic_index(settings: Any) -> Optional[SemanticIndex]:
+def build_semantic_index(settings: Any, schema: str = "ews") -> Optional[SemanticIndex]:
     """None for the default core; a pgvector adapter when configured.
     Construction failure logs and returns None — the server never gates
     on the optional tier."""
@@ -191,6 +195,7 @@ def build_semantic_index(settings: Any) -> Optional[SemanticIndex]:
             ollama_url=getattr(settings, "ews_semantic_ollama_url",
                                "http://localhost:11434"),
             model=getattr(settings, "ews_semantic_model", "bge-m3"),
+            schema=schema,
         )
     except Exception as exc:
         logger.error("semantic index init failed (%s) — keyword-only", exc)

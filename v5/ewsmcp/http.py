@@ -10,7 +10,8 @@ from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 
 from . import __version__
 from .errors import HTTP_BY_CODE
-from .server import build_context, build_mcp_server, start_connection_manager
+from .server import ACTIVE_CONTEXT, build_context, build_mcp_server, start_connection_manager
+from .tenants import MissingTenantCredentials, TenantContextPool, TenantPoolFull
 from .tools.base import dispatch
 
 logger = logging.getLogger(__name__)
@@ -147,63 +148,41 @@ async def _read_json_body(receive, send) -> Optional[Any]:
 def build_app(ctx, settings, streamable: Optional[Any] = None):
     """ASGI app closure — separated from serve_http so tests can drive it."""
     api_key = settings.mcp_api_key or ""
+    tenant_pool = (
+        TenantContextPool(settings, settings.ews_http_max_tenants)
+        if settings.ews_http_header_auth else None
+    )
 
-    async def app(scope, receive, send):
-        if scope["type"] == "lifespan":
-            while True:
-                message = await receive()
-                if message["type"] == "lifespan.startup":
-                    await start_connection_manager(ctx)
-                    await send({"type": "lifespan.startup.complete"})
-                elif message["type"] == "lifespan.shutdown":
-                    await send({"type": "lifespan.shutdown.complete"})
-                    return
-        if scope["type"] != "http":
-            return
+    async def protected_request(scope, receive, send, request_ctx):
         path, method = scope["path"], scope["method"]
-
-        if path == "/livez" and method == "GET":
-            return await _send_json(send, 200, {"status": "ok"})
-        if path == "/health" and method == "GET":
-            return await _send_json(send, 200, {"status": "ok", "tools": len(ctx.registry)})
-        if path == "/version" and method == "GET":
-            return await _send_json(send, 200, {"version": __version__})
-        if path == "/readyz" and method == "GET":
-            conn = ctx.manager.status() if ctx.manager else {"state": "unmanaged"}
-            warm = conn.get("state") in ("warm", "unmanaged")
-            return await _send_json(send, 200 if warm else 503, {
-                "status": "ok" if warm else "unavailable",
-                "connection": conn, "tools": len(ctx.registry),
-            })
-
-        if api_key and not _authorized(scope.get("headers"), api_key):
-            return await _send_json(send, 401, {"ok": False, "error": {
-                "code": "auth_failed", "message": "missing or invalid bearer token"}})
-
         if path == "/mcp":
             if streamable is None:
                 return await _send_json(send, 503, {"ok": False, "error": {
                     "code": "upstream_unavailable",
                     "message": "MCP transport not mounted"}})
-            return await streamable.handle_request(scope, receive, send)
+            context_token = ACTIVE_CONTEXT.set(request_ctx)
+            try:
+                return await streamable.handle_request(scope, receive, send)
+            finally:
+                ACTIVE_CONTEXT.reset(context_token)
         if path == "/metrics" and method == "GET":
-            body = _metrics_text(ctx).encode()
+            body = _metrics_text(request_ctx).encode()
             await send({"type": "http.response.start", "status": 200, "headers": [
                 [b"content-type", b"text/plain; version=0.0.4; charset=utf-8"],
                 [b"content-length", str(len(body)).encode()],
             ]})
             return await send({"type": "http.response.body", "body": body})
         if path == "/openapi.json" and method == "GET":
-            return await _send_json(send, 200, _openapi(ctx))
+            return await _send_json(send, 200, _openapi(request_ctx))
         if path == "/api/tools" and method == "GET":
             return await _send_json(send, 200, {"tools": [
                 {"name": s.name, "class": s.side_effect_class,
                  "description": s.description[:140]}
-                for s in ctx.registry.values()
+                for s in request_ctx.registry.values()
             ]})
         if path.startswith("/api/tools/") and method == "POST":
             name = path.removeprefix("/api/tools/")
-            spec = ctx.registry.get(name)
+            spec = request_ctx.registry.get(name)
             if spec is None:
                 return await _send_json(send, 404, {"ok": False, "error": {
                     "code": "validation", "message": f"Unknown tool: {name}"}})
@@ -220,7 +199,7 @@ def build_app(ctx, settings, streamable: Optional[Any] = None):
                 return await _send_json(send, 400, {"ok": False, "error": {
                     "code": "validation", "message": error.message,
                     "hint": f"See the {name} schema in /openapi.json."}})
-            result = await dispatch(ctx, spec, arguments, transport="rest")
+            result = await dispatch(request_ctx, spec, arguments, transport="rest")
             status = 200
             if isinstance(result, dict) and result.get("ok") is False:
                 status = HTTP_BY_CODE.get(result.get("error", {}).get("code", ""), 500)
@@ -228,6 +207,61 @@ def build_app(ctx, settings, streamable: Optional[Any] = None):
 
         return await _send_json(send, 404, {"ok": False, "error": {
             "code": "validation", "message": "not found"}})
+
+    async def app(scope, receive, send):
+        if scope["type"] == "lifespan":
+            while True:
+                message = await receive()
+                if message["type"] == "lifespan.startup":
+                    if tenant_pool is None:
+                        await start_connection_manager(ctx)
+                    await send({"type": "lifespan.startup.complete"})
+                elif message["type"] == "lifespan.shutdown":
+                    if tenant_pool is not None:
+                        await tenant_pool.close()
+                    await send({"type": "lifespan.shutdown.complete"})
+                    return
+        if scope["type"] != "http":
+            return
+        path, method = scope["path"], scope["method"]
+
+        if path == "/livez" and method == "GET":
+            return await _send_json(send, 200, {"status": "ok"})
+        if path == "/health" and method == "GET":
+            return await _send_json(send, 200, {"status": "ok", "tools": len(ctx.registry)})
+        if path == "/version" and method == "GET":
+            return await _send_json(send, 200, {"version": __version__})
+        if path == "/readyz" and method == "GET":
+            if tenant_pool is not None:
+                return await _send_json(send, 200, {
+                    "status": "ok", "connection": {"state": "tenant-scoped"},
+                    "tools": len(ctx.registry),
+                })
+            conn = ctx.manager.status() if ctx.manager else {"state": "unmanaged"}
+            warm = conn.get("state") in ("warm", "unmanaged")
+            return await _send_json(send, 200 if warm else 503, {
+                "status": "ok" if warm else "unavailable",
+                "connection": conn, "tools": len(ctx.registry),
+            })
+
+        if api_key and not _authorized(scope.get("headers"), api_key):
+            return await _send_json(send, 401, {"ok": False, "error": {
+                "code": "auth_failed", "message": "missing or invalid bearer token"}})
+
+        if tenant_pool is None:
+            return await protected_request(scope, receive, send, ctx)
+        try:
+            async with tenant_pool.lease(scope.get("headers")) as tenant_ctx:
+                return await protected_request(scope, receive, send, tenant_ctx)
+        except MissingTenantCredentials as exc:
+            return await _send_json(send, 401, {"ok": False, "error": {
+                "code": "auth_failed", "message": str(exc),
+                "hint": "Provide X-EWS-Email and X-EWS-Password headers."}})
+        except TenantPoolFull:
+            return await _send_json(send, 503, {"ok": False, "error": {
+                "code": "upstream_unavailable",
+                "message": "tenant context capacity is temporarily full",
+                "retry_after_s": 1}})
 
     return app
 
