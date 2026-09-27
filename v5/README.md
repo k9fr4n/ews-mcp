@@ -234,11 +234,27 @@ stdio too). Audit chain:
 
 ```bash
 pip install -e .[dev]
-python -m pytest tests -q          # the full suite, no Exchange needed
+python -m pytest tests -q --cov=ewsmcp --cov-report=term-missing --cov-fail-under=79.1993
 python -m ruff check .
 python scripts/boot_smoke.py full  # end-to-end boot against a dead endpoint
 python scripts/dump_tool_table.py --check   # docs vs registry drift gate
 ```
+
+The v5 CI coverage gate measures **line coverage in `ewsmcp` only**; it does
+not contact Exchange. The initial blocking floor is **79.1993%**, the measured
+baseline from 2,730 covered of 3,447 executable statements (79.1993037%, rounded
+to four decimal places). No source files are omitted and no custom coverage
+exclusions are configured. CI publishes the coverage summary to the GitHub
+Actions job summary and prints a per-file missing-line report in the test log.
+
+Treat the aggregate as a regression floor, not a safety guarantee. When changing
+safety-critical behavior, review the missing lines and focused tests for the
+affected paths, especially `ewsmcp/tools/base.py` (dispatch, safety gates, and
+recipient guards), `ewsmcp/tenants.py` (tenant isolation), `ewsmcp/confirm.py`,
+`ewsmcp/audit.py`, `ewsmcp/config.py`, and `ewsmcp/tools/writes.py`. Keep the
+floor at or above the current value; raise it to the new measured level when
+coverage improves, and add tests before proposing any decrease. **80% is an
+aspirational goal, not the current gate.**
 
 ## Example assistant skill
 
