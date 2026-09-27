@@ -13,22 +13,14 @@
 > Development, releases, and container images for this fork are maintained
 > separately under [`k9fr4n/ews-mcp`](https://github.com/k9fr4n/ews-mcp).
 
-## Two lines live in this repository
+## The server
 
-| Line | Where | Status | Container image |
-|---|---|---|---|
-| **4.5 — current** | [`v5/`](v5/) | Active development. **Recommended for all new setups.** | `ghcr.io/k9fr4n/ews-mcp:v4.5*` |
-| 4.0 — legacy | [`src/`](src/) | Maintenance only. | `ghcr.io/k9fr4n/ews-mcp:latest` |
+This repository contains one implementation: the **V5 server**, published
+as version **4.5.x** from [`v5/`](v5/). It provides a consolidated 28-tool
+surface, short alias IDs, token-lean responses, a cache-first local mirror
+with Arabic-correct full-text search, and centralized safety gates.
 
-The 4.5 line is a greenfield rewrite: a consolidated **28-tool** surface,
-short alias ids the model can actually copy, token-lean responses (~60-token
-result cards instead of raw Outlook HTML), a cache-first local mirror with
-Arabic-correct full-text search, and a safety model enforced in one place.
-The legacy line keeps `:latest` stable for existing deployments until 4.5
-is promoted. **If you are new here, use 4.5 and read
-[`v5/README.md`](v5/README.md).**
-
-## Quick start — 4.5 locally over stdio (recommended)
+## Quick start — V5 locally over stdio
 
 No Docker needed. The MCP client starts the server as a child process;
 it inherits your machine's network (VPNs included), and nothing listens
@@ -52,30 +44,26 @@ claude mcp add exchange \
 ```
 
 Claude Desktop and other clients: same command + env in a config block —
-see the [4.5 quick start](v5/README.md#quick-start--run-it-locally-over-stdio-no-docker).
+see the [V5 quick start](v5/README.md#quick-start--run-it-locally-over-stdio-no-docker).
 Defaults are safe: `draft` tier, sending disabled.
 
-## Quick start — Docker / HTTP (server deployments)
+## Docker / HTTP (server deployments)
 
 When the server runs on a host that can reach Exchange directly:
 
 ```bash
-# 4.5 (pin an exact tag; the 4.5 line never publishes :latest)
+cp v5/.env.example .env
+# Pin an exact V5 release tag.
 docker run -d --name ews-mcp-v5 -p 8000:8000 --env-file .env \
   -v ewsmcp-data:/data ghcr.io/k9fr4n/ews-mcp:v4.5.0a1
-
-# legacy 4.0
-docker run -d --name ews-mcp --env-file .env --network host \
-  ghcr.io/k9fr4n/ews-mcp:latest
 ```
 
-4.5 serves Streamable HTTP at `/mcp`, plain REST at `/api/tools/<name>`,
-and health at `/livez` `/readyz` `/health`. Legacy transport docs:
-[`docs/legacy/CONNECTION_GUIDE.md`](docs/legacy/CONNECTION_GUIDE.md).
-For a shared 4.5 HTTP deployment serving multiple mailboxes with per-request
+The server serves Streamable HTTP at `/mcp`, plain REST at
+`/api/tools/<name>`, and health at `/livez`, `/readyz`, and `/health`.
+For a shared HTTP deployment serving multiple mailboxes with per-request
 Exchange credentials, see the [multi-tenant HTTP setup](v5/README.md#multi-tenant-http-mode).
 
-## What the assistant can do (4.5)
+## What the assistant can do
 
 - **Read fast** — `get_mailbox_overview` (morning brief in one call),
   `search_messages` (FTS over a local mirror, Arabic-correct, semantic
@@ -92,10 +80,10 @@ Exchange credentials, see the [multi-tenant HTTP setup](v5/README.md#multi-tenan
   works even while Exchange is unreachable).
 
 The complete, generated reference — every tool with its parameters,
-envelope, error codes, and the v3→4.5 rename map — is
+envelope, error codes, and historical rename map — is
 [`v5/docs/API.md`](v5/docs/API.md).
 
-## The safety model (4.5)
+## The safety model
 
 | Mechanism | What it does |
 |---|---|
@@ -110,41 +98,36 @@ envelope, error codes, and the v3→4.5 rename map — is
 
 | | |
 |---|---|
-| [`docs/README.md`](docs/README.md) | **The documentation map** — start here |
-| [`v5/README.md`](v5/README.md) | 4.5 install & use: stdio, HTTP, Docker, configuration |
-| [`v5/docs/API.md`](v5/docs/API.md) | 4.5 API reference (generated from the registry) |
-| [`v5/DESIGN.md`](v5/DESIGN.md) | 4.5 architecture and rationale |
-| [`docs/legacy/`](docs/legacy/) | Legacy 4.0 documentation (`:latest` users) |
+| [`docs/README.md`](docs/README.md) | Documentation map |
+| [`v5/README.md`](v5/README.md) | Install & use: stdio, HTTP, Docker, configuration |
+| [`v5/docs/API.md`](v5/docs/API.md) | API reference (generated from the registry) |
+| [`v5/DESIGN.md`](v5/DESIGN.md) | Architecture and rationale |
 | [`examples/skills/exchange-assistant/`](examples/skills/exchange-assistant/) | Example assistant skill on top of the tool surface |
 
 ## Development
 
 ```bash
-pip install -e ./v5[dev]
-python -m pytest v5/tests -q            # full 4.5 suite — no Exchange needed
+pip install -e './v5[dev]'
+python -m pytest v5/tests -q            # full suite — no Exchange needed
 python -m ruff check v5
 python v5/scripts/boot_smoke.py full    # end-to-end boot, dead endpoint
 python v5/scripts/dump_tool_table.py --check   # docs ↔ registry drift gate
 ```
 
-CI: `v5-tests` (blocking ruff + tests on 3.11/3.12 + boot smokes + Docker
-import smoke) runs on every push touching `v5/`; `v5-publish` builds
+CI: `v5-tests` (blocking Ruff + tests on 3.11/3.12 + boot smokes + Docker
+import smoke) runs on pushes and pull requests; `v5-publish` builds
 `ghcr.io/k9fr4n/ews-mcp:v4.5*` from tags `v4.5.*`, gated on the full test job.
-The legacy image publishes to `ghcr.io/k9fr4n/ews-mcp` from `main` pushes
-and `v3.*`/`v4.0.*` tags only. Both workflows derive their image namespace
-from this GitHub repository; they do not publish to the original fork's
-package. After the first successful publication, set the GHCR package's
-visibility to **Public** in the package settings if anonymous pulls are
-intended; GitHub Actions does not change package visibility automatically.
+The workflow derives its image namespace from this GitHub repository.
+After the first successful publication, set the GHCR package's visibility
+to **Public** in the package settings if anonymous pulls are intended;
+GitHub Actions does not change package visibility automatically.
 
 ## Repository layout
 
 ```
-v5/            the 4.5 server (package `ews-mcp`, entry point `ewsmcp`)
-src/           the legacy 4.0 server (ships as :latest)
-docs/          documentation map + legacy 4.0 docs
+v5/            the V5 server (package `ews-mcp`, entry point `ewsmcp`)
+docs/          documentation map
 examples/      example assistant skill
-.env.example   legacy 4.0 configuration template (4.5: v5/.env.example)
 ```
 
 ## Contributing & license
