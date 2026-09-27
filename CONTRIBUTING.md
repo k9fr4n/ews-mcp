@@ -9,20 +9,26 @@ and how to engage with it productively.
 v5/                      the 4.5 server (current line)
 src/                     legacy 4.0 source (ships as :latest)
 docs/                    documentation map; docs/legacy/ = 4.0 docs
-.github/workflows/       CI: docker-publish.yml + docker-build-test.yml
+.github/workflows/       v5-tests.yml, v5-publish.yml, docker-build-test.yml,
+                         docker-publish.yml
 Dockerfile               container build
 docker-compose.yml       reference docker-compose for local dev
-requirements.txt         runtime Python deps
-setup.py                 distribution metadata
+requirements.txt         runtime Python deps for legacy 4.0
+setup.py                 distribution metadata for legacy 4.0
+v5/pyproject.toml        package metadata and dev dependencies for 4.5
 README.md                product landing page
 CHANGELOG.md             version history
 ```
 
-There is no `tests/` directory in this repository. Test development
-happens out-of-tree against the maintainer's live mailbox; the public
-repo intentionally ships only the production product. The CI workflows
-verify Dockerfile build + Python import correctness — that's the gate
-PRs need to pass.
+The active 4.5 line has an in-repository test suite under `v5/tests/`.
+It uses mocked Exchange objects and does not require a live mailbox. Its
+blocking CI checks run Ruff, the unit and contract tests, a generated API
+documentation check, no-Exchange boot smokes, and a Docker build/import
+smoke. Tests run on Python 3.11 and 3.12; the boot smokes run on 3.11.
+
+The legacy 4.0 line under `src/` has no in-repository test suite. Its CI
+builds the legacy Docker image and checks that the Python package imports.
+Do not use this legacy CI description for changes under `v5/`.
 
 ## Filing issues
 
@@ -34,10 +40,10 @@ PRs need to pass.
   own mailbox once the shape of the bug is clear.
 - **Feature requests**: describe the workflow first, the proposed API
   second. The maintainer's bias is to keep the MCP doing deterministic
-  data work and push reasoning to the consuming agent — see the README
-  "MCP / skill boundary" section for context. Reasoning-shaped tools
-  ("classify this", "summarise that") are unlikely to be added because
-  the consuming LLM does them better in-prompt.
+  data work and push reasoning to the consuming agent — see
+  [`v5/DESIGN.md`](v5/DESIGN.md) for the 4.5 design principle.
+  Reasoning-shaped tools ("classify this", "summarise that") are unlikely
+  to be added because the consuming LLM does them better in-prompt.
 
 ## Submitting pull requests
 
@@ -56,7 +62,10 @@ verify the fix.
 
 If you'd rather your code merged verbatim, the bar is higher:
 - The PR must apply cleanly on top of `main`
-- The Dockerfile + import check (`docker-build-test.yml`) must pass
+- For changes under `v5/`, the `v5-tests` workflow must pass, including
+  tests, boot smokes, API documentation check, and Docker build/import smoke.
+- For changes to the legacy 4.0 line, the Docker build/import check
+  (`docker-build-test.yml`) must pass.
 - The change must not introduce a new external service dependency
   (e.g. a vector database) without prior discussion in an issue
 - The change must not re-add LLM-reasoning tools removed in v4.0
@@ -64,11 +73,31 @@ If you'd rather your code merged verbatim, the bar is higher:
 
 ## Local development
 
+### Current line: 4.5 (`v5/`)
+
 ```bash
-git clone https://github.com/<owner>/<repo>.git
-cd <repo>
+git clone https://github.com/azizmazrou/ews-mcp.git
+cd ews-mcp
+python -m venv .venv
+source .venv/bin/activate
+pip install -e './v5[dev]'
+
+python -m pytest v5/tests -q
+python -m ruff check v5
+python v5/scripts/boot_smoke.py full
+python v5/scripts/dump_tool_table.py --check
+```
+
+The tests and boot smoke do not need Exchange credentials. For running the
+server and configuring its environment, see [`v5/README.md`](v5/README.md).
+
+### Legacy line: 4.0 (`src/`)
+
+```bash
+git clone https://github.com/azizmazrou/ews-mcp.git
+cd ews-mcp
 pip install -r requirements.txt
-cp .env.example .env  # edit with your credentials
+cp .env.example .env
 python -m src.main
 ```
 
@@ -81,7 +110,11 @@ docker run -i --rm --env-file .env ews-mcp:dev
 
 ## Code style
 
-- Plain Python, no specific formatter enforced. Match surrounding style.
+- For 4.5, `ruff check v5` is enforced in CI. Formatting checks and static
+  type checking are not currently part of that workflow. Match the
+  surrounding style.
+- The legacy 4.0 line has no enforced formatter or linter; match the
+  surrounding style there as well.
 - Comments should explain *why*, not *what*.
 - Don't add docstrings that just restate the function name.
 - Avoid try/except that swallows failures silently — log and re-raise
