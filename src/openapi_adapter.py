@@ -136,7 +136,7 @@ class OpenAPIAdapter:
                 "version": api_version,
                 "contact": {
                     "name": "EWS MCP Server",
-                    "url": "https://github.com/azizmazrou/ews-mcp"
+                    "url": "https://github.com/k9fr4n/ews-mcp"
                 }
             },
             "servers": servers,

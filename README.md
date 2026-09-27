@@ -1,7 +1,7 @@
 # EWS MCP Server
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Docker Image](https://img.shields.io/badge/ghcr.io-ews--mcp-blue?logo=docker)](https://github.com/azizmazrou/ews-mcp/pkgs/container/ews-mcp)
+[![Docker Image](https://img.shields.io/badge/ghcr.io-ews--mcp-blue?logo=docker)](https://github.com/k9fr4n/ews-mcp/pkgs/container/ews-mcp)
 
 > A Model Context Protocol server that gives an LLM assistant **real,
 > typed control of a Microsoft Exchange mailbox** — mail, calendar,
@@ -9,12 +9,16 @@
 > natively. No Graph proxy, no Microsoft 365 connector. Works with
 > Claude Code, Claude Desktop, Open WebUI, and any other MCP client.
 
+> This is an independent fork of [`azizmazrou/ews-mcp`](https://github.com/azizmazrou/ews-mcp).
+> Development, releases, and container images for this fork are maintained
+> separately under [`k9fr4n/ews-mcp`](https://github.com/k9fr4n/ews-mcp).
+
 ## Two lines live in this repository
 
 | Line | Where | Status | Container image |
 |---|---|---|---|
-| **4.5 — current** | [`v5/`](v5/) | Active development. **Recommended for all new setups.** | `ghcr.io/azizmazrou/ews-mcp:v4.5*` |
-| 4.0 — legacy | [`src/`](src/) | Maintenance only. | `ghcr.io/azizmazrou/ews-mcp:latest` |
+| **4.5 — current** | [`v5/`](v5/) | Active development. **Recommended for all new setups.** | `ghcr.io/k9fr4n/ews-mcp:v4.5*` |
+| 4.0 — legacy | [`src/`](src/) | Maintenance only. | `ghcr.io/k9fr4n/ews-mcp:latest` |
 
 The 4.5 line is a greenfield rewrite: a consolidated **28-tool** surface,
 short alias ids the model can actually copy, token-lean responses (~60-token
@@ -31,7 +35,7 @@ it inherits your machine's network (VPNs included), and nothing listens
 on any port.
 
 ```bash
-git clone https://github.com/azizmazrou/ews-mcp && cd ews-mcp
+git clone https://github.com/k9fr4n/ews-mcp.git && cd ews-mcp
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
 pip install ./v5
@@ -58,11 +62,11 @@ When the server runs on a host that can reach Exchange directly:
 ```bash
 # 4.5 (pin an exact tag; the 4.5 line never publishes :latest)
 docker run -d --name ews-mcp-v5 -p 8000:8000 --env-file .env \
-  -v ewsmcp-data:/data ghcr.io/azizmazrou/ews-mcp:v4.5.0a1
+  -v ewsmcp-data:/data ghcr.io/k9fr4n/ews-mcp:v4.5.0a1
 
 # legacy 4.0
 docker run -d --name ews-mcp --env-file .env --network host \
-  ghcr.io/azizmazrou/ews-mcp:latest
+  ghcr.io/k9fr4n/ews-mcp:latest
 ```
 
 4.5 serves Streamable HTTP at `/mcp`, plain REST at `/api/tools/<name>`,
@@ -125,8 +129,13 @@ python v5/scripts/dump_tool_table.py --check   # docs ↔ registry drift gate
 
 CI: `v5-tests` (blocking ruff + tests on 3.11/3.12 + boot smokes + Docker
 import smoke) runs on every push touching `v5/`; `v5-publish` builds
-`ghcr.io/…:v4.5*` from tags `v4.5.*`, gated on the full test job. The
-legacy image publishes from `main` pushes and `v3.*`/`v4.0.*` tags only.
+`ghcr.io/k9fr4n/ews-mcp:v4.5*` from tags `v4.5.*`, gated on the full test job.
+The legacy image publishes to `ghcr.io/k9fr4n/ews-mcp` from `main` pushes
+and `v3.*`/`v4.0.*` tags only. Both workflows derive their image namespace
+from this GitHub repository; they do not publish to the original fork's
+package. After the first successful publication, set the GHCR package's
+visibility to **Public** in the package settings if anonymous pulls are
+intended; GitHub Actions does not change package visibility automatically.
 
 ## Repository layout
 

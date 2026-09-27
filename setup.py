@@ -4,8 +4,8 @@ setup(
     name="ews-mcp-server",
     version="4.0.0",
     description="MCP Server for Microsoft Exchange Web Services — bidirectional body format, expanded attachment extraction, lean AI surface",
-    author="Abdulaziz Almazrou",
-    author_email="abdulaziz.almazrou@gmail.com",
+    author="ews-mcp contributors",
+    url="https://github.com/k9fr4n/ews-mcp",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     install_requires=[

@@ -17,6 +17,9 @@ dependencies = [
     "uvicorn>=0.30",
 ]
 
+[project.urls]
+Repository = "https://github.com/k9fr4n/ews-mcp"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8",

@@ -1,5 +1,5 @@
 > **Legacy 4.0 documentation** — this page describes the `src/` server
-> that ships as `ghcr.io/azizmazrou/ews-mcp:latest`. For the current
+> that ships as `ghcr.io/k9fr4n/ews-mcp:latest`. For the current
 > 4.5 line see [`v5/README.md`](../../v5/README.md) and
 > [`v5/docs/API.md`](../../v5/docs/API.md).
 
@@ -17,7 +17,7 @@ The fastest way to deploy is using pre-built images from GitHub Container Regist
 
 ```bash
 # Pull latest image
-docker pull ghcr.io/azizmazrou/ews-mcp:latest
+docker pull ghcr.io/k9fr4n/ews-mcp:latest
 
 # Create .env file
 cat > .env <<EOF
@@ -33,7 +33,7 @@ docker run -d \
   --name ews-mcp-server \
   --env-file .env \
   -v $(pwd)/logs:/app/logs \
-  ghcr.io/azizmazrou/ews-mcp:latest
+  ghcr.io/k9fr4n/ews-mcp:latest
 
 # Check logs
 docker logs -f ews-mcp-server
@@ -48,7 +48,7 @@ version: '3.8'
 
 services:
   ews-mcp-server:
-    image: ghcr.io/azizmazrou/ews-mcp:latest
+    image: ghcr.io/k9fr4n/ews-mcp:latest
     container_name: ews-mcp-server
     env_file:
       - .env

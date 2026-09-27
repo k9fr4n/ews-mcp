@@ -7,7 +7,7 @@ search, and a two-phase confirm flow that makes autonomous sending
 tamper-evident.
 
 > The `v5/` directory name is an internal path; the release line is
-> **4.5.x** (`ghcr.io/…:v4.5*`). Architecture: [DESIGN.md](DESIGN.md).
+> **4.5.x** (`ghcr.io/k9fr4n/ews-mcp:v4.5*`). Architecture: [DESIGN.md](DESIGN.md).
 > Full API reference: [docs/API.md](docs/API.md).
 
 ## Quick start — run it locally over stdio (no Docker)
@@ -25,7 +25,7 @@ route.
 **1. Install** (Python 3.11+):
 
 ```bash
-git clone https://github.com/azizmazrou/ews-mcp && cd ews-mcp
+git clone https://github.com/k9fr4n/ews-mcp.git && cd ews-mcp
 python -m venv .venv
 source .venv/bin/activate        # Windows PowerShell: .venv\Scripts\Activate.ps1
 pip install ./v5

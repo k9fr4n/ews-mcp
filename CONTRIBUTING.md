@@ -36,10 +36,10 @@ Do not use this legacy CI description for changes under `v5/`.
   `basic` / `ntlm`), the exchangelib version, the relevant tool name,
   and the verbatim error message + a redacted version of the input
   arguments. **Do not paste real email addresses, internal hostnames,
-  or message bodies** — the maintainer will reproduce against their
-  own mailbox once the shape of the bug is clear.
+  or message bodies** — maintainers can investigate using the reported
+  shape of the issue without exposing mailbox data.
 - **Feature requests**: describe the workflow first, the proposed API
-  second. The maintainer's bias is to keep the MCP doing deterministic
+  second. This project aims to keep the MCP doing deterministic
   data work and push reasoning to the consuming agent — see
   [`v5/DESIGN.md`](v5/DESIGN.md) for the 4.5 design principle.
   Reasoning-shaped tools ("classify this", "summarise that") are unlikely
@@ -47,22 +47,15 @@ Do not use this legacy CI description for changes under `v5/`.
 
 ## Submitting pull requests
 
-PRs are welcome but the maintainer's pattern is:
+Pull requests are welcome. Before submitting one:
 
-1. **Read the issue / PR for the problem statement and approach**
-2. **Reproduce the bug against a real mailbox** (not against the PR's diff)
-3. **Apply a fix in the maintainer's own style** rather than merging the
-   PR directly
+1. **Read the issue / PR for the problem statement and proposed approach**
+2. **Reproduce the bug when possible**, without including mailbox data in the PR
+3. **Keep the change focused** and follow the conventions described below
 
-This keeps the codebase consistent and avoids hidden assumptions in
-contributor changes. So **please don't be offended if a PR is closed
-without merge** — it usually means the bug was real and got fixed in
-a separate commit by the maintainer; the issue stays linked so you can
-verify the fix.
-
-If you'd rather your code merged verbatim, the bar is higher:
-- The PR must apply cleanly on top of `main`
-- For changes under `v5/`, the `v5-tests` workflow must pass, including
+All pull requests are reviewed on their merits. The required checks are:
+- The PR applies cleanly on top of `main`
+- For changes under `v5/`, the `v5-tests` workflow passes, including
   tests, boot smokes, API documentation check, and Docker build/import smoke.
 - For changes to the legacy 4.0 line, the Docker build/import check
   (`docker-build-test.yml`) must pass.
@@ -76,7 +69,7 @@ If you'd rather your code merged verbatim, the bar is higher:
 ### Current line: 4.5 (`v5/`)
 
 ```bash
-git clone https://github.com/azizmazrou/ews-mcp.git
+git clone https://github.com/k9fr4n/ews-mcp.git
 cd ews-mcp
 python -m venv .venv
 source .venv/bin/activate
@@ -94,7 +87,7 @@ server and configuring its environment, see [`v5/README.md`](v5/README.md).
 ### Legacy line: 4.0 (`src/`)
 
 ```bash
-git clone https://github.com/azizmazrou/ews-mcp.git
+git clone https://github.com/k9fr4n/ews-mcp.git
 cd ews-mcp
 pip install -r requirements.txt
 cp .env.example .env
@@ -127,8 +120,8 @@ docker run -i --rm --env-file .env ews-mcp:dev
 
 If you find a vulnerability that affects production deployments
 (credential leak, RCE, AuthZ bypass, etc.), **please don't open a
-public issue**. Email the maintainer directly via the address in
-`setup.py` and they'll coordinate a fix.
+public issue**. Use GitHub's private vulnerability reporting for this
+repository, or contact the repository maintainers privately.
 
 ## License
 

@@ -69,6 +69,7 @@ jobs:
           labels: |
             org.opencontainers.image.title=ews-mcp
             org.opencontainers.image.description=MCP server for Microsoft Exchange / Office 365
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.licenses=MIT
 
       - name: Build and push Docker image

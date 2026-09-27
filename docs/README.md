@@ -3,7 +3,7 @@
 Two server lines live in this repository — make sure you read the docs
 for the one you run.
 
-## Current line — 4.5 (`v5/`, images `ghcr.io/…:v4.5*`)
+## Current line — 4.5 (`v5/`, images `ghcr.io/k9fr4n/ews-mcp:v4.5*`)
 
 | Document | What it covers |
 |---|---|

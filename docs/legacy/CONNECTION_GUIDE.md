@@ -1,5 +1,5 @@
 > **Legacy 4.0 documentation** — this page describes the `src/` server
-> that ships as `ghcr.io/azizmazrou/ews-mcp:latest`. For the current
+> that ships as `ghcr.io/k9fr4n/ews-mcp:latest`. For the current
 > 4.5 line see [`v5/README.md`](../../v5/README.md) and
 > [`v5/docs/API.md`](../../v5/docs/API.md).
 
@@ -42,7 +42,7 @@ Set the transport type using the `MCP_TRANSPORT` environment variable:
         "-i",
         "--env-file",
         "/absolute/path/to/ews.env",
-        "ghcr.io/azizmazrou/ews-mcp-server:latest"
+        "ghcr.io/k9fr4n/ews-mcp:latest"
       ]
     }
   }
@@ -66,7 +66,7 @@ docker run --rm -i \
   -e EWS_AUTH_TYPE=basic \
   -e EWS_USERNAME=your@email.com \
   -e EWS_PASSWORD=yourpassword \
-  ghcr.io/azizmazrou/ews-mcp-server:latest
+      ghcr.io/k9fr4n/ews-mcp:latest
 ```
 
 ## 2. SSE/HTTP Transport
@@ -91,7 +91,7 @@ docker run -d \
   -e MCP_HOST=0.0.0.0 \
   -e MCP_PORT=8000 \
   --name ews-mcp-server \
-  ghcr.io/azizmazrou/ews-mcp-server:latest
+  ghcr.io/k9fr4n/ews-mcp:latest
 ```
 
 ### Endpoints
@@ -119,7 +119,7 @@ docker run -d \
   -e EWS_AUTH_TYPE=basic \
   -e EWS_USERNAME=your@email.com \
   -e EWS_PASSWORD=yourpassword \
-  ghcr.io/azizmazrou/ews-mcp-server:latest
+  ghcr.io/k9fr4n/ews-mcp:latest
 ```
 
 Server will be available at: `http://localhost:3000`
@@ -139,7 +139,7 @@ Server will be available at: `http://localhost:3000`
      -p 8000:8000
      --env-file
      /path/to/ews.env
-     ghcr.io/azizmazrou/ews-mcp-server:latest
+      ghcr.io/k9fr4n/ews-mcp:latest
      ```
 
 3. **Create environment file** (`/path/to/ews.env`):
@@ -270,7 +270,7 @@ version: '3.8'
 
 services:
   ews-mcp-server:
-    image: ghcr.io/azizmazrou/ews-mcp-server:latest
+    image: ghcr.io/k9fr4n/ews-mcp:latest
     ports:
       - "8000:8000"
     environment:
