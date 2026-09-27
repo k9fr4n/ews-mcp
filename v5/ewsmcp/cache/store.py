@@ -154,9 +154,8 @@ def trailing_block(body: str) -> Optional[str]:
 
 def _sig_hash(sender_email: str, block: str) -> str:
     import hashlib
-    return hashlib.sha256(
-        f"{sender_email.lower()}|{normalize_ar(block)}".encode()
-    ).hexdigest()
+
+    return hashlib.sha256(f"{sender_email.lower()}|{normalize_ar(block)}".encode()).hexdigest()
 
 
 class CacheStore:
@@ -177,8 +176,7 @@ class CacheStore:
 
     def _writer_conn(self) -> sqlite3.Connection:
         if self._writer is None:
-            conn = sqlite3.connect(str(self.db_path), timeout=10.0,
-                                   check_same_thread=False)
+            conn = sqlite3.connect(str(self.db_path), timeout=10.0, check_same_thread=False)
             conn.execute("PRAGMA journal_mode=WAL;")
             conn.execute("PRAGMA synchronous=NORMAL;")
             conn.execute("PRAGMA foreign_keys=ON;")
@@ -231,8 +229,7 @@ class CacheStore:
     # ------------------------------------------------------------- writers
 
     @staticmethod
-    def norm_for_row(subject: str, sender_name: str, sender_email: str,
-                     body_clean: str) -> str:
+    def norm_for_row(subject: str, sender_name: str, sender_email: str, body_clean: str) -> str:
         return normalize_ar(
             " ".join(p for p in (subject, sender_name, sender_email, body_clean) if p)
         )
@@ -309,13 +306,16 @@ class CacheStore:
             return
         with self._write() as conn:
             for ews_id in ews_ids:
-                conn.execute("UPDATE messages SET is_read=? WHERE ews_id=?",
-                             (1 if is_read else 0, ews_id))
+                conn.execute(
+                    "UPDATE messages SET is_read=? WHERE ews_id=?", (1 if is_read else 0, ews_id)
+                )
 
     def apply_categories(self, ews_id: str, categories: Optional[List[str]]) -> None:
         with self._write() as conn:
-            conn.execute("UPDATE messages SET categories_json=? WHERE ews_id=?",
-                         (json.dumps(categories or []), ews_id))
+            conn.execute(
+                "UPDATE messages SET categories_json=? WHERE ews_id=?",
+                (json.dumps(categories or []), ews_id),
+            )
 
     def replace_events(self, rows: List[Dict[str, Any]]) -> None:
         """Replace the expanded-occurrences window (refresh strategy)."""
@@ -372,16 +372,15 @@ class CacheStore:
 
     def get_sync_state(self, key: str) -> Optional[str]:
         with self._read() as conn:
-            row = conn.execute("SELECT token FROM sync_state WHERE key=?",
-                               (key,)).fetchone()
+            row = conn.execute("SELECT token FROM sync_state WHERE key=?", (key,)).fetchone()
         return row["token"] if row else None
 
-    def set_sync_state(self, key: str, token: Optional[str],
-                       as_of_ts: Optional[float] = None) -> None:
+    def set_sync_state(
+        self, key: str, token: Optional[str], as_of_ts: Optional[float] = None
+    ) -> None:
         with self._write() as conn:
             conn.execute(
-                "INSERT OR REPLACE INTO sync_state(key, token, as_of) "
-                "VALUES (?, ?, ?)",
+                "INSERT OR REPLACE INTO sync_state(key, token, as_of) VALUES (?, ?, ?)",
                 (key, token, int(as_of_ts if as_of_ts is not None else time.time())),
             )
 
@@ -389,8 +388,7 @@ class CacheStore:
         """Drop every mirrored row and sync token (admin path; the next
         sync cycle rebuilds from scratch)."""
         with self._write() as conn:
-            for table in ("messages", "events", "tasks", "folders",
-                          "sync_state", "sender_sigs"):
+            for table in ("messages", "events", "tasks", "folders", "sync_state", "sender_sigs"):
                 conn.execute(f"DELETE FROM {table}")  # noqa: S608 — fixed names
         logger.warning("cache purged: %s", self.db_path)
 
@@ -399,8 +397,7 @@ class CacheStore:
     def watermark(self, key: str) -> Optional[int]:
         try:
             with self._read() as conn:
-                row = conn.execute("SELECT as_of FROM sync_state WHERE key=?",
-                                   (key,)).fetchone()
+                row = conn.execute("SELECT as_of FROM sync_state WHERE key=?", (key,)).fetchone()
             return int(row["as_of"]) if row else None
         except sqlite3.Error:
             return None
@@ -453,8 +450,7 @@ class CacheStore:
         if text:
             match = fts_match_expression(text)
             if match:
-                joins = ("JOIN messages_fts f ON f.rowid = m.rowid "
-                         "AND messages_fts MATCH ?")
+                joins = "JOIN messages_fts f ON f.rowid = m.rowid AND messages_fts MATCH ?"
                 params.append(match)
         if folders:
             where.append(f"m.folder IN ({','.join('?' * len(folders))})")
@@ -481,8 +477,10 @@ class CacheStore:
         clause = (" WHERE " + " AND ".join(where)) if where else ""
         base = f"FROM messages m {joins}{clause}"
         with self._read() as conn:
-            total = conn.execute(f"SELECT COUNT(*) AS c {base}",  # noqa: S608
-                                 params).fetchone()["c"]
+            total = conn.execute(
+                f"SELECT COUNT(*) AS c {base}",  # noqa: S608
+                params,
+            ).fetchone()["c"]
             rows = conn.execute(
                 f"SELECT m.* {base} ORDER BY m.date_ts DESC "  # noqa: S608
                 "LIMIT ? OFFSET ?",
@@ -500,8 +498,7 @@ class CacheStore:
         try:
             with self._read() as conn:
                 row = conn.execute(
-                    "SELECT hits FROM sender_sigs WHERE sender_email=? "
-                    "AND sig_hash=?",
+                    "SELECT hits FROM sender_sigs WHERE sender_email=? AND sig_hash=?",
                     (sender, _sig_hash(sender, block)),
                 ).fetchone()
         except sqlite3.Error:
@@ -520,16 +517,14 @@ class CacheStore:
     def thread(self, conversation_id: str) -> List[sqlite3.Row]:
         with self._read() as conn:
             return conn.execute(
-                "SELECT * FROM messages WHERE conversation_id=? "
-                "ORDER BY date_ts ASC",
+                "SELECT * FROM messages WHERE conversation_id=? ORDER BY date_ts ASC",
                 (conversation_id,),
             ).fetchall()
 
     def unread_page(self, limit: int = 10) -> Tuple[int, List[sqlite3.Row]]:
         with self._read() as conn:
             total = conn.execute(
-                "SELECT COUNT(*) AS c FROM messages "
-                "WHERE folder='inbox' AND is_read=0"
+                "SELECT COUNT(*) AS c FROM messages WHERE folder='inbox' AND is_read=0"
             ).fetchone()["c"]
             rows = conn.execute(
                 "SELECT * FROM messages WHERE folder='inbox' AND is_read=0 "
@@ -538,8 +533,7 @@ class CacheStore:
             ).fetchall()
         return int(total), rows
 
-    def events_window(self, start_ts: int, end_ts: int,
-                      limit: int = 25) -> List[sqlite3.Row]:
+    def events_window(self, start_ts: int, end_ts: int, limit: int = 25) -> List[sqlite3.Row]:
         with self._read() as conn:
             return conn.execute(
                 "SELECT * FROM events WHERE start_ts < ? AND end_ts > ? "
@@ -549,11 +543,11 @@ class CacheStore:
 
     def folder_rows(self) -> List[sqlite3.Row]:
         with self._read() as conn:
-            return conn.execute(
-                "SELECT * FROM folders ORDER BY path ASC").fetchall()
+            return conn.execute("SELECT * FROM folders ORDER BY path ASC").fetchall()
 
-    def task_rows(self, include_completed: bool = False,
-                  offset: int = 0, limit: int = 50) -> Tuple[List[sqlite3.Row], int]:
+    def task_rows(
+        self, include_completed: bool = False, offset: int = 0, limit: int = 50
+    ) -> Tuple[List[sqlite3.Row], int]:
         clause = "" if include_completed else " WHERE is_complete=0"
         with self._read() as conn:
             total = conn.execute(
@@ -580,13 +574,17 @@ class CacheStore:
             sent = conn.execute(
                 "SELECT COUNT(*) AS c, MAX(date_iso) AS last FROM messages "
                 "WHERE folder='sent' AND lower(to_json) LIKE ?",
-                (f'%{needle}%',),
+                (f"%{needle}%",),
             ).fetchone()
         out: Dict[str, Any] = {}
         if received and received["c"]:
-            out.update({"received_count": received["c"],
-                        "first_seen": received["first"],
-                        "last_received": received["last"]})
+            out.update(
+                {
+                    "received_count": received["c"],
+                    "first_seen": received["first"],
+                    "last_received": received["last"],
+                }
+            )
         if sent and sent["c"]:
             out.update({"sent_count": sent["c"], "last_sent": sent["last"]})
         return out
@@ -603,8 +601,7 @@ class CacheStore:
                 (needle, needle, int(limit)),
             ).fetchall()
 
-    def sent_without_reply(self, days: int = 5,
-                           limit: int = 25) -> List[sqlite3.Row]:
+    def sent_without_reply(self, days: int = 5, limit: int = 25) -> List[sqlite3.Row]:
         """waiting_on: sent-folder threads with no later inbound message."""
         cutoff = int(time.time() - days * 86400)
         with self._read() as conn:

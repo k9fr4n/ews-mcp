@@ -40,8 +40,7 @@ class SemanticIndex(Protocol):
 
     def query(self, text: str, top_k: int = 20) -> List[Tuple[str, float]]: ...
 
-    def query_similar(self, ews_id: str,
-                      top_k: int = 5) -> List[Tuple[str, float]]: ...
+    def query_similar(self, ews_id: str, top_k: int = 5) -> List[Tuple[str, float]]: ...
 
     def health(self) -> Dict[str, Any]: ...
 
@@ -59,14 +58,13 @@ def chunk_text(text: str, size: int = CHUNK_CHARS) -> List[str]:
     text = (text or "").strip()
     if not text:
         return []
-    return [text[i:i + size] for i in range(0, len(text), size)]
+    return [text[i : i + size] for i in range(0, len(text), size)]
 
 
 class PgVectorSemanticIndex:
     """pgvector-backed index; embeddings from an Ollama server."""
 
-    def __init__(self, dsn: str, ollama_url: str, model: str = "bge-m3",
-                 schema: str = "ews"):
+    def __init__(self, dsn: str, ollama_url: str, model: str = "bge-m3", schema: str = "ews"):
         if psycopg is None:
             raise RuntimeError(
                 "EWS_SEMANTIC_INDEX=pgvector requires the 'psycopg' package "
@@ -104,8 +102,10 @@ class PgVectorSemanticIndex:
     def _embed(self, texts: List[str]) -> List[List[float]]:
         payload = json.dumps({"model": self.model, "input": texts}).encode()
         req = urllib.request.Request(
-            f"{self.ollama_url}/api/embed", data=payload,
-            headers={"Content-Type": "application/json"}, method="POST",
+            f"{self.ollama_url}/api/embed",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
         with urllib.request.urlopen(req, timeout=30) as resp:
             data = json.loads(resp.read().decode())
@@ -162,8 +162,7 @@ class PgVectorSemanticIndex:
             ).fetchall()
         return [(r[0], 1.0 - float(r[1])) for r in rows]
 
-    def query_similar(self, ews_id: str,
-                      top_k: int = 5) -> List[Tuple[str, float]]:
+    def query_similar(self, ews_id: str, top_k: int = 5) -> List[Tuple[str, float]]:
         with self._conn() as conn:
             rows = conn.execute(
                 f"""
@@ -186,14 +185,14 @@ def build_semantic_index(settings: Any, schema: str = "ews") -> Optional[Semanti
         return None
     dsn = getattr(settings, "ews_semantic_pg_dsn", None)
     if not dsn:
-        logger.error("EWS_SEMANTIC_INDEX=pgvector but EWS_SEMANTIC_PG_DSN "
-                     "is unset — semantic tier disabled")
+        logger.error(
+            "EWS_SEMANTIC_INDEX=pgvector but EWS_SEMANTIC_PG_DSN is unset — semantic tier disabled"
+        )
         return None
     try:
         return PgVectorSemanticIndex(
             dsn=dsn,
-            ollama_url=getattr(settings, "ews_semantic_ollama_url",
-                               "http://localhost:11434"),
+            ollama_url=getattr(settings, "ews_semantic_ollama_url", "http://localhost:11434"),
             model=getattr(settings, "ews_semantic_model", "bge-m3"),
             schema=schema,
         )

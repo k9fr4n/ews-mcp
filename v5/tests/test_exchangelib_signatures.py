@@ -40,37 +40,83 @@ PINS = {
     # --- fetch / projection (mail_read._fetch_one, writes._fetch_many)
     Account.fetch: ["self", "ids", "folder", "only_fields", "chunk_size"],
     # --- draft lifecycle (writes._create_draft / _update_draft)
-    Message.create_reply: ["self", "subject", "body", "to_recipients",
-                           "cc_recipients", "bcc_recipients", "author"],
+    Message.create_reply: [
+        "self",
+        "subject",
+        "body",
+        "to_recipients",
+        "cc_recipients",
+        "bcc_recipients",
+        "author",
+    ],
     Message.create_reply_all: ["self", "subject", "body", "author"],
-    Item.create_forward: ["self", "subject", "body", "to_recipients",
-                          "cc_recipients", "bcc_recipients"],
+    Item.create_forward: [
+        "self",
+        "subject",
+        "body",
+        "to_recipients",
+        "cc_recipients",
+        "bcc_recipients",
+    ],
     ReplyToItem.save: ["self", "folder"],
-    Item.save: ["self", "update_fields", "conflict_resolution",
-                "send_meeting_invitations"],
-    Message.send: ["self", "save_copy", "copy_to_folder",
-                   "conflict_resolution", "send_meeting_invitations"],
+    Item.save: ["self", "update_fields", "conflict_resolution", "send_meeting_invitations"],
+    Message.send: [
+        "self",
+        "save_copy",
+        "copy_to_folder",
+        "conflict_resolution",
+        "send_meeting_invitations",
+    ],
     # --- moves / deletes (writes._move_messages / _delete_messages)
     Item.move: ["self", "to_folder"],
-    Item.move_to_trash: ["self", "send_meeting_cancellations",
-                         "affected_task_occurrences", "suppress_read_receipts"],
-    Item.soft_delete: ["self", "send_meeting_cancellations",
-                       "affected_task_occurrences", "suppress_read_receipts"],
-    Item.delete: ["self", "send_meeting_cancellations",
-                  "affected_task_occurrences", "suppress_read_receipts"],
+    Item.move_to_trash: [
+        "self",
+        "send_meeting_cancellations",
+        "affected_task_occurrences",
+        "suppress_read_receipts",
+    ],
+    Item.soft_delete: [
+        "self",
+        "send_meeting_cancellations",
+        "affected_task_occurrences",
+        "suppress_read_receipts",
+    ],
+    Item.delete: [
+        "self",
+        "send_meeting_cancellations",
+        "affected_task_occurrences",
+        "suppress_read_receipts",
+    ],
     # --- calendar (writes._create_event / _respond_to_event / _cancel_event)
-    CalendarItem.save: ["self", "update_fields", "conflict_resolution",
-                        "send_meeting_invitations"],
+    CalendarItem.save: ["self", "update_fields", "conflict_resolution", "send_meeting_invitations"],
     # --- free/busy + GAL (calendar_people)
-    Protocol.get_free_busy_info: ["self", "accounts", "start", "end",
-                                  "merged_free_busy_interval", "requested_view"],
-    Protocol.resolve_names: ["self", "names", "parent_folders",
-                             "return_full_contact_data", "search_scope", "shape"],
+    Protocol.get_free_busy_info: [
+        "self",
+        "accounts",
+        "start",
+        "end",
+        "merged_free_busy_interval",
+        "requested_view",
+    ],
+    Protocol.resolve_names: [
+        "self",
+        "names",
+        "parent_folders",
+        "return_full_contact_data",
+        "search_scope",
+        "shape",
+    ],
     # --- calendar window expansion (list_events; max_items is the Phase D cap)
     FolderCollection.view: ["self", "start", "end", "max_items", "args", "kwargs"],
     # --- delta sync primitives (the Phase E cache engine rides on these)
-    Folder.sync_items: ["self", "sync_state", "only_fields", "ignore",
-                        "max_changes_returned", "sync_scope"],
+    Folder.sync_items: [
+        "self",
+        "sync_state",
+        "only_fields",
+        "ignore",
+        "max_changes_returned",
+        "sync_scope",
+    ],
     Folder.sync_hierarchy: ["self", "sync_state", "only_fields"],
     Folder.refresh: ["self"],
     # --- reliability (gateway)
@@ -97,26 +143,32 @@ def test_item_delete_has_no_disposal_kwargs():
 def test_calendar_responses_accept_extra_kwargs():
     """accept/decline/tentatively_accept forward **kwargs (writes passes
     body=...); cancel() is pure **kwargs (writes passes new_body=...)."""
-    for method in (CalendarItem.accept, CalendarItem.decline,
-                   CalendarItem.tentatively_accept):
+    for method in (CalendarItem.accept, CalendarItem.decline, CalendarItem.tentatively_accept):
         sig = inspect.signature(method)
-        assert any(p.kind is inspect.Parameter.VAR_KEYWORD
-                   for p in sig.parameters.values()), method.__qualname__
+        assert any(p.kind is inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()), (
+            method.__qualname__
+        )
         assert "message_disposition" in sig.parameters
     cancel_sig = inspect.signature(CalendarItem.cancel)
-    assert any(p.kind is inspect.Parameter.VAR_KEYWORD
-               for p in cancel_sig.parameters.values())
+    assert any(p.kind is inspect.Parameter.VAR_KEYWORD for p in cancel_sig.parameters.values())
 
 
 def test_oof_settings_shape():
     """5.x: internal/external replies are PLAIN STRINGS (OofReply is gone);
     the state constants and field set are what writes._set_oof relies on."""
     field_names = [f.name for f in OofSettings.FIELDS]
-    assert field_names == ["state", "external_audience", "start", "end",
-                           "internal_reply", "external_reply"]
+    assert field_names == [
+        "state",
+        "external_audience",
+        "start",
+        "end",
+        "internal_reply",
+        "external_reply",
+    ]
     for const in ("ENABLED", "SCHEDULED", "DISABLED"):
         assert isinstance(getattr(OofSettings, const), str)
     import exchangelib
+
     assert not hasattr(exchangelib, "OofReply")
 
 

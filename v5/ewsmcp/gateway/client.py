@@ -27,9 +27,15 @@ from ..errors import ToolError
 logger = logging.getLogger(__name__)
 
 WELL_KNOWN = {
-    "f:inbox": "inbox", "f:sent": "sent", "f:drafts": "drafts",
-    "f:trash": "trash", "f:junk": "junk", "f:outbox": "outbox",
-    "f:calendar": "calendar", "f:contacts": "contacts", "f:tasks": "tasks",
+    "f:inbox": "inbox",
+    "f:sent": "sent",
+    "f:drafts": "drafts",
+    "f:trash": "trash",
+    "f:junk": "junk",
+    "f:outbox": "outbox",
+    "f:calendar": "calendar",
+    "f:contacts": "contacts",
+    "f:tasks": "tasks",
 }
 
 
@@ -67,8 +73,10 @@ class EWSGateway:
             retry_policy=FaultTolerance(max_wait=s.ews_retry_max_wait_seconds),
         )
         if s.ews_auth_type_force:  # escape hatch for a DIFFERENT Exchange only
-            logger.warning("auth_type FORCED to %s — the primary Exchange requires auto-negotiation",
-                           s.ews_auth_type_force)
+            logger.warning(
+                "auth_type FORCED to %s — the primary Exchange requires auto-negotiation",
+                s.ews_auth_type_force,
+            )
             kwargs["auth_type"] = s.ews_auth_type_force
         config = Configuration(**kwargs)
         return Account(
@@ -140,9 +148,13 @@ class EWSGateway:
                 if getattr(folder, "id", None):
                     cache[folder.id] = folder
                 try:
-                    path = "/".join(
-                        p.name for p in folder.parts[2:]  # drop root/Top of Info Store
-                    ) or folder.name
+                    path = (
+                        "/".join(
+                            p.name
+                            for p in folder.parts[2:]  # drop root/Top of Info Store
+                        )
+                        or folder.name
+                    )
                 except Exception:
                     path = folder.name
                 cache[path.lower()] = folder
@@ -169,14 +181,16 @@ class EWSGateway:
         folder = cache.get(key) or cache.get(key.lower())
         if folder is None:
             raise ToolError(
-                "not_found", f"No folder matches {ref!r}.",
+                "not_found",
+                f"No folder matches {ref!r}.",
                 hint="Use list_folders and pass one of its ids or paths.",
             )
         return folder
 
 
-def paginate(query: Any, *, offset: int, limit: int,
-             chunk: int = 50) -> Tuple[List[Any], Optional[int]]:
+def paginate(
+    query: Any, *, offset: int, limit: int, chunk: int = 50
+) -> Tuple[List[Any], Optional[int]]:
     """Materialize query[offset:offset+limit] in chunks (sync, raises on
     mid-iteration failure — the caller's error mapper classifies it).
 
@@ -195,7 +209,7 @@ def paginate(query: Any, *, offset: int, limit: int,
     chunk = max(1, min(chunk, 250))
     while len(items) < lookahead:
         want = min(chunk, lookahead - len(items))
-        batch = list(query[cursor:cursor + want])
+        batch = list(query[cursor : cursor + want])
         if not batch:
             break
         items.extend(batch)

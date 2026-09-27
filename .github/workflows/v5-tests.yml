@@ -32,6 +32,8 @@ jobs:
         run: pip install -e ./v5[dev]
       - name: Lint (blocking)
         run: ruff check v5
+      - name: Format check (blocking)
+        run: ruff format --check v5
       - name: Unit + contract suites (blocking)
         working-directory: v5
         run: python -m pytest tests -q

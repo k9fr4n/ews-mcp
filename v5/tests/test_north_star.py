@@ -44,14 +44,28 @@ class CountingGateway:
 def _seed(tmp_path):
     store = CacheStore(tmp_path / "mirror.db")
     now = int(time.time())
-    store.upsert_messages([
-        make_row(RAW_EWS_ID, subject="Q3 budget approval",
-                 sender_email="director@example.com", sender_name="Director",
-                 body="Please confirm the Q3 budget line by Sunday.",
-                 date_ts=now - 3600, conv="CONV-NS", is_read=0),
-        make_row("OTHER-1", subject="Unrelated", sender_email="x@example.com",
-                 body="noise", date_ts=now - 60, conv="CONV-X"),
-    ])
+    store.upsert_messages(
+        [
+            make_row(
+                RAW_EWS_ID,
+                subject="Q3 budget approval",
+                sender_email="director@example.com",
+                sender_name="Director",
+                body="Please confirm the Q3 budget line by Sunday.",
+                date_ts=now - 3600,
+                conv="CONV-NS",
+                is_read=0,
+            ),
+            make_row(
+                "OTHER-1",
+                subject="Unrelated",
+                sender_email="x@example.com",
+                body="noise",
+                date_ts=now - 60,
+                conv="CONV-X",
+            ),
+        ]
+    )
     store.set_sync_state("item:inbox", "TOK", now)
     store.set_sync_state("item:sent", "TOK", now)
     return store
@@ -62,8 +76,7 @@ def test_north_star_two_calls_under_two_k_tokens(tmp_path):
     original = MagicMock(name="original")
     original.subject = "Q3 budget approval"
     reply = MagicMock(name="reply")
-    reply.save.return_value = SimpleNamespace(id="RAW-NEW-REPLY",
-                                              changekey="CK-R")
+    reply.save.return_value = SimpleNamespace(id="RAW-NEW-REPLY", changekey="CK-R")
     reply.to_recipients = [SimpleNamespace(email_address="director@example.com")]
     reply.cc_recipients = []
     original.create_reply.return_value = reply
@@ -84,8 +97,11 @@ def test_north_star_two_calls_under_two_k_tokens(tmp_path):
     outputs = []
 
     # Call 1: find the last email from the sender — pure mirror.
-    res1 = asyncio.run(dispatch(ctx, ctx.registry["search_messages"],
-                                {"sender": "director@example.com", "limit": 1}))
+    res1 = asyncio.run(
+        dispatch(
+            ctx, ctx.registry["search_messages"], {"sender": "director@example.com", "limit": 1}
+        )
+    )
     outputs.append(res1)
     assert res1["source"] == "cache" and res1["as_of"]
     assert res1["count"] == 1
@@ -97,10 +113,17 @@ def test_north_star_two_calls_under_two_k_tokens(tmp_path):
     assert gateway.calls == 0  # Exchange untouched so far
 
     # Call 2: reply as a draft using the alias, verbatim.
-    res2 = asyncio.run(dispatch(ctx, ctx.registry["create_draft"], {
-        "mode": "reply", "reply_to": card["id"],
-        "body": "Confirmed — the Q3 line is approved.",
-    }))
+    res2 = asyncio.run(
+        dispatch(
+            ctx,
+            ctx.registry["create_draft"],
+            {
+                "mode": "reply",
+                "reply_to": card["id"],
+                "body": "Confirmed — the Q3 line is approved.",
+            },
+        )
+    )
     outputs.append(res2)
     assert res2["ok"] is True
     assert res2["draft_id"].startswith("d")
@@ -129,8 +152,11 @@ def test_north_star_search_is_fast_warm(tmp_path):
     )
     build_registry(ctx)
     start = time.perf_counter()
-    res = asyncio.run(dispatch(ctx, ctx.registry["search_messages"],
-                               {"sender": "director@example.com", "limit": 1}))
+    res = asyncio.run(
+        dispatch(
+            ctx, ctx.registry["search_messages"], {"sender": "director@example.com", "limit": 1}
+        )
+    )
     elapsed_ms = (time.perf_counter() - start) * 1000
     assert res["source"] == "cache"
     assert ctx.gateway.calls == 0

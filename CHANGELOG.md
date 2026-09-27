@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### CI
+- Format the existing v5 codebase with Ruff and enforce formatting with a
+  blocking, non-mutating `ruff format --check v5` workflow step. The legacy
+  4.0 source remains outside this check. Pin the existing lint rule selection
+  explicitly so newer Ruff releases do not silently expand it.
+
 ### Documentation
 - Repository-wide revamp: the root README is now a single front door
   (version guide, stdio-first quick start); `docs/README.md` maps all

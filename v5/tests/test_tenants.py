@@ -14,22 +14,33 @@ from ewsmcp.tenants import (
 
 
 def test_credentials_are_read_from_request_headers():
-    values = credentials_from_headers([
-        (b"x-ews-email", b"alice@example.com"),
-        (b"x-ews-password", b"secret"),
-    ], make_settings())
+    values = credentials_from_headers(
+        [
+            (b"x-ews-email", b"alice@example.com"),
+            (b"x-ews-password", b"secret"),
+        ],
+        make_settings(),
+    )
     assert values == (
-        "alice@example.com", "alice@example.com", "secret",
+        "alice@example.com",
+        "alice@example.com",
+        "secret",
         "https://mail.corp.example/EWS/Exchange.asmx",
     )
 
 
-@pytest.mark.parametrize("headers", [
-    [],
-    [(b"x-ews-email", b"alice@example.com")],
-    [(b"x-ews-email", b"alice@example.com"),
-     (b"x-ews-password", b"one"), (b"x-ews-password", b"two")],
-])
+@pytest.mark.parametrize(
+    "headers",
+    [
+        [],
+        [(b"x-ews-email", b"alice@example.com")],
+        [
+            (b"x-ews-email", b"alice@example.com"),
+            (b"x-ews-password", b"one"),
+            (b"x-ews-password", b"two"),
+        ],
+    ],
+)
 def test_missing_or_duplicate_credentials_are_rejected(headers):
     with pytest.raises(MissingTenantCredentials):
         credentials_from_headers(headers, make_settings())
@@ -43,9 +54,9 @@ def test_endpoint_override_requires_server_allowlist():
     ]
     with pytest.raises(MissingTenantCredentials, match="allowlist"):
         credentials_from_headers(headers, make_settings())
-    settings = make_settings(ews_http_allowed_server_urls=(
-        "https://other.example/EWS/Exchange.asmx"
-    ))
+    settings = make_settings(
+        ews_http_allowed_server_urls=("https://other.example/EWS/Exchange.asmx")
+    )
     assert credentials_from_headers(headers, settings)[3] == (
         "https://other.example/EWS/Exchange.asmx"
     )
@@ -59,8 +70,12 @@ async def test_pool_reuses_and_isolates_mailbox_contexts(monkeypatch):
 
     def fake_build(settings, tenant_id=""):
         context = SimpleNamespace(
-            settings=settings, tenant_id=tenant_id, manager=None, sync=None,
-            cache=None, gateway=SimpleNamespace(_pool=None),
+            settings=settings,
+            tenant_id=tenant_id,
+            manager=None,
+            sync=None,
+            cache=None,
+            gateway=SimpleNamespace(_pool=None),
         )
         built.append(context)
         return context
@@ -72,10 +87,8 @@ async def test_pool_reuses_and_isolates_mailbox_contexts(monkeypatch):
     monkeypatch.setattr(tenants, "start_connection_manager", fake_start)
     settings = make_settings(ews_http_header_auth=True, mcp_transport="http")
     pool = TenantContextPool(settings, max_tenants=2)
-    alice_headers = [(b"x-ews-email", b"alice@example.com"),
-                     (b"x-ews-password", b"alice-secret")]
-    bob_headers = [(b"x-ews-email", b"bob@example.com"),
-                   (b"x-ews-password", b"bob-secret")]
+    alice_headers = [(b"x-ews-email", b"alice@example.com"), (b"x-ews-password", b"alice-secret")]
+    bob_headers = [(b"x-ews-email", b"bob@example.com"), (b"x-ews-password", b"bob-secret")]
 
     alice_id, alice = await pool.acquire(alice_headers)
     same_id, same = await pool.acquire(alice_headers)
@@ -101,8 +114,12 @@ async def test_pool_hard_caps_active_tenant_contexts(monkeypatch):
 
     def fake_build(settings, tenant_id=""):
         return SimpleNamespace(
-            settings=settings, tenant_id=tenant_id, manager=None, sync=None,
-            cache=None, gateway=SimpleNamespace(_pool=None),
+            settings=settings,
+            tenant_id=tenant_id,
+            manager=None,
+            sync=None,
+            cache=None,
+            gateway=SimpleNamespace(_pool=None),
         )
 
     async def fake_start(context):
@@ -114,10 +131,8 @@ async def test_pool_hard_caps_active_tenant_contexts(monkeypatch):
         make_settings(ews_http_header_auth=True, mcp_transport="http"),
         max_tenants=1,
     )
-    alice = [(b"x-ews-email", b"alice@example.com"),
-             (b"x-ews-password", b"alice-secret")]
-    bob = [(b"x-ews-email", b"bob@example.com"),
-           (b"x-ews-password", b"bob-secret")]
+    alice = [(b"x-ews-email", b"alice@example.com"), (b"x-ews-password", b"alice-secret")]
+    bob = [(b"x-ews-email", b"bob@example.com"), (b"x-ews-password", b"bob-secret")]
 
     alice_id, _ = await pool.acquire(alice)
     with pytest.raises(TenantPoolFull):

@@ -19,6 +19,7 @@ restart an unexpired token could in principle be replayed, which is why the
 TTL stays short and the record is a defense-in-depth layer on top of the
 content binding, not a substitute for it.
 """
+
 from __future__ import annotations
 
 import base64
@@ -66,6 +67,7 @@ def reset_consumed_tokens() -> None:
     with _CONSUMED_LOCK:
         _CONSUMED.clear()
 
+
 # Per-process fallback secret when SEND_CONFIRM_SECRET is unset. Tokens then
 # do not survive a restart — acceptable given the short TTL.
 _PROCESS_SECRET = secrets.token_hex(32)
@@ -86,9 +88,7 @@ def content_hash(*parts: Any) -> str:
     h = hashlib.sha256()
     for p in parts:
         h.update(b"\x1f")
-        h.update(
-            json.dumps(p, default=str, sort_keys=True, ensure_ascii=False).encode("utf-8")
-        )
+        h.update(json.dumps(p, default=str, sort_keys=True, ensure_ascii=False).encode("utf-8"))
     return h.hexdigest()
 
 

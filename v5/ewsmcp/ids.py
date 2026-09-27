@@ -139,8 +139,7 @@ class IdAliaser:
                 """
             )
             conn.execute(
-                "CREATE INDEX IF NOT EXISTS ix_aliases_imid "
-                "ON aliases(internet_message_id)"
+                "CREATE INDEX IF NOT EXISTS ix_aliases_imid ON aliases(internet_message_id)"
             )
             conn.execute(
                 """
@@ -180,14 +179,15 @@ class IdAliaser:
             # transaction each time (alias_many refreshes last_seen in bulk).
             with self._connect() as conn:
                 row = conn.execute(
-                    "SELECT alias, changekey, internet_message_id "
-                    "FROM aliases WHERE ews_id=?", (ews_id,)
+                    "SELECT alias, changekey, internet_message_id FROM aliases WHERE ews_id=?",
+                    (ews_id,),
                 ).fetchone()
-            if row is not None and (
-                changekey is None or row["changekey"] == changekey
-            ) and (
-                internet_message_id is None
-                or row["internet_message_id"] == internet_message_id
+            if (
+                row is not None
+                and (changekey is None or row["changekey"] == changekey)
+                and (
+                    internet_message_id is None or row["internet_message_id"] == internet_message_id
+                )
             ):
                 return row["alias"]
         except (sqlite3.Error, OSError):
@@ -215,16 +215,13 @@ class IdAliaser:
                         "ON CONFLICT(kind) DO UPDATE SET n = n + 1",
                         (kind,),
                     )
-                    n = conn.execute(
-                        "SELECT n FROM counters WHERE kind=?", (kind,)
-                    ).fetchone()[0]
+                    n = conn.execute("SELECT n FROM counters WHERE kind=?", (kind,)).fetchone()[0]
                     alias = f"{kind}{n}"
                     conn.execute(
                         "INSERT INTO aliases(alias, kind, ews_id, changekey, "
                         "internet_message_id, first_seen, last_seen) "
                         "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                        (alias, kind, ews_id, changekey,
-                         internet_message_id, now, now),
+                        (alias, kind, ews_id, changekey, internet_message_id, now, now),
                     )
                     conn.execute("COMMIT")
                     return alias
@@ -232,9 +229,7 @@ class IdAliaser:
                     conn.execute("ROLLBACK")
                     raise
         except (sqlite3.Error, OSError) as exc:
-            _LOG.warning(
-                "id_alias: alias_for failed (%s); returning raw id", exc
-            )
+            _LOG.warning("id_alias: alias_for failed (%s); returning raw id", exc)
             return ews_id
 
     def alias_many(
@@ -280,9 +275,9 @@ class IdAliaser:
                             "ON CONFLICT(kind) DO UPDATE SET n = n + 1",
                             (kind,),
                         )
-                        n = conn.execute(
-                            "SELECT n FROM counters WHERE kind=?", (kind,)
-                        ).fetchone()[0]
+                        n = conn.execute("SELECT n FROM counters WHERE kind=?", (kind,)).fetchone()[
+                            0
+                        ]
                         alias = f"{kind}{n}"
                         conn.execute(
                             "INSERT INTO aliases(alias, kind, ews_id, changekey, "
@@ -311,13 +306,12 @@ class IdAliaser:
             return value
         try:
             with self._connect() as conn:
-                row = conn.execute(
-                    "SELECT ews_id FROM aliases WHERE alias=?", (value,)
-                ).fetchone()
+                row = conn.execute("SELECT ews_id FROM aliases WHERE alias=?", (value,)).fetchone()
         except (sqlite3.Error, OSError) as exc:
             _LOG.warning(
                 "id_alias: resolve lookup failed for %r (%s); passing through",
-                value, exc,
+                value,
+                exc,
             )
             return value
         if row is None:
@@ -381,8 +375,7 @@ class IdAliaser:
         try:
             with self._connect() as conn:
                 row = conn.execute(
-                    "SELECT internet_message_id FROM aliases "
-                    "WHERE alias=? OR ews_id=?",
+                    "SELECT internet_message_id FROM aliases WHERE alias=? OR ews_id=?",
                     (alias_or_id, alias_or_id),
                 ).fetchone()
         except (sqlite3.Error, OSError) as exc:
@@ -414,8 +407,9 @@ class NullAliaser:
     and raw ids must keep working).
     """
 
-    def alias_for(self, ews_id: str, kind: str = "m", changekey=None,
-                  internet_message_id=None) -> str:
+    def alias_for(
+        self, ews_id: str, kind: str = "m", changekey=None, internet_message_id=None
+    ) -> str:
         return ews_id
 
     def alias_many(self, entries) -> dict:

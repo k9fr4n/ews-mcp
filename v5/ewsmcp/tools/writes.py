@@ -63,8 +63,9 @@ def _write_through(ctx: Context, method: str, *args: Any) -> None:
     try:
         getattr(cache, method)(*args)
     except Exception as exc:
-        logger.warning("write-through %s failed (sync will repair): %s",
-                       method, exc)
+        logger.warning("write-through %s failed (sync will repair): %s", method, exc)
+
+
 _DRAFT_MODES = ("new", "reply", "reply_all", "forward")
 _RESPONSE_METHOD = {"accept": "accept", "tentative": "tentatively_accept", "decline": "decline"}
 _OOF_STATE = {
@@ -91,8 +92,9 @@ def reset_idempotency_store() -> None:
 def _idempotency_get(key: str) -> Optional[Dict[str, Any]]:
     now = time.time()
     with _IDEMPOTENT_LOCK:
-        for stale in [k for k, v in _IDEMPOTENT_SENDS.items()
-                      if now - v.get("ts", 0) > _IDEMPOTENCY_TTL_S]:
+        for stale in [
+            k for k, v in _IDEMPOTENT_SENDS.items() if now - v.get("ts", 0) > _IDEMPOTENCY_TTL_S
+        ]:
             del _IDEMPOTENT_SENDS[stale]
         return _IDEMPOTENT_SENDS.get(key)
 
@@ -111,9 +113,10 @@ def _idempotency_put(key: str, record: Dict[str, Any]) -> None:
 def _wrap_html(text: str) -> HTMLBody:
     """Plain text → minimal HTML (<p> per blank-line paragraph, <br/> inside)."""
     paragraphs = (text or "").split("\n\n")
-    rendered = "".join(
-        "<p>" + _html.escape(p).replace("\n", "<br/>") + "</p>" for p in paragraphs
-    ) or "<p></p>"
+    rendered = (
+        "".join("<p>" + _html.escape(p).replace("\n", "<br/>") + "</p>" for p in paragraphs)
+        or "<p></p>"
+    )
     return HTMLBody(f"<html><body>{rendered}</body></html>")
 
 
@@ -137,16 +140,18 @@ def _fetch_one(account: Any, raw_id: str) -> Any:
     in-line exception instances (exchangelib bulk semantics)."""
     fetched = list(account.fetch([(raw_id, None)]))
     if not fetched:
-        raise ToolError("not_found", "item not found; the id may be stale",
-                        hint="Re-run search_messages/list_events for a fresh id.")
+        raise ToolError(
+            "not_found",
+            "item not found; the id may be stale",
+            hint="Re-run search_messages/list_events for a fresh id.",
+        )
     item = fetched[0]
     if isinstance(item, Exception):
         raise item  # map_exception classifies (ErrorItemNotFound → not_found)
     return item
 
 
-def _fetch_many(account: Any, raw_ids: List[str],
-                only: Optional[List[str]] = None) -> List[Any]:
+def _fetch_many(account: Any, raw_ids: List[str], only: Optional[List[str]] = None) -> List[Any]:
     """Bulk fetch with a projection: without only_fields, exchangelib pulls
     the FULL item — including base64 MIME — so a 'mark 50 read' on messages
     with attachments used to move megabytes to flip one boolean each."""
@@ -157,8 +162,7 @@ def _require_bulk(ids: List[str]) -> None:
     if not ids:
         raise ToolError("validation", "ids must contain at least one id")
     if len(ids) > MAX_BULK_IDS:
-        raise ToolError("validation",
-                        f"at most {MAX_BULK_IDS} ids per call (got {len(ids)})")
+        raise ToolError("validation", f"at most {MAX_BULK_IDS} ids per call (got {len(ids)})")
 
 
 def _item_folder_id(item: Any) -> Optional[str]:
@@ -175,32 +179,35 @@ def _require_in_drafts(item: Any, account: Any, tool: str) -> None:
         raise ToolError(
             "validation",
             f"{tool}: the item is not a draft (it is not in f:drafts)",
-            hint="Only items in the Drafts folder are valid here; "
-                 "use create_draft to author one.",
+            hint="Only items in the Drafts folder are valid here; use create_draft to author one.",
         )
 
 
 def _failed_entry(ctx: Context, raw_id: str, exc: Exception) -> Dict[str, str]:
-    return {"id": ctx.aliaser.alias_for(raw_id, "m"),
-            "error": f"{type(exc).__name__}: {exc}"}
+    return {"id": ctx.aliaser.alias_for(raw_id, "m"), "error": f"{type(exc).__name__}: {exc}"}
 
 
-def _draft_preview(to: List[str], cc: List[str], subject: str,
-                   body: Optional[str]) -> Dict[str, Any]:
-    return {"to": to, "cc": cc, "subject": subject,
-            "body_snippet": (body or "")[:200]}
+def _draft_preview(
+    to: List[str], cc: List[str], subject: str, body: Optional[str]
+) -> Dict[str, Any]:
+    return {"to": to, "cc": cc, "subject": subject, "body_snippet": (body or "")[:200]}
 
 
 # --- WRITE class (reversible; tier ≥ draft) ----------------------------------
 
 
-async def _create_draft(ctx: Context, *, body: str, mode: str = "new",
-                        reply_to: Optional[str] = None,
-                        to: Optional[List[str]] = None,
-                        cc: Optional[List[str]] = None,
-                        bcc: Optional[List[str]] = None,
-                        subject: Optional[str] = None,
-                        importance: Optional[str] = None) -> Dict[str, Any]:
+async def _create_draft(
+    ctx: Context,
+    *,
+    body: str,
+    mode: str = "new",
+    reply_to: Optional[str] = None,
+    to: Optional[List[str]] = None,
+    cc: Optional[List[str]] = None,
+    bcc: Optional[List[str]] = None,
+    subject: Optional[str] = None,
+    importance: Optional[str] = None,
+) -> Dict[str, Any]:
     if mode not in _DRAFT_MODES:
         raise ToolError("validation", f"mode must be one of {_DRAFT_MODES}, got {mode!r}")
     if mode != "new" and not reply_to:
@@ -214,8 +221,10 @@ async def _create_draft(ctx: Context, *, body: str, mode: str = "new",
     def work(account: Any) -> Any:
         if mode == "new":
             msg = Message(
-                account=account, folder=account.drafts,
-                subject=subject or "", body=html_body,
+                account=account,
+                folder=account.drafts,
+                subject=subject or "",
+                body=html_body,
                 to_recipients=list(to),
                 cc_recipients=list(cc) if cc else None,
                 bcc_recipients=list(bcc) if bcc else None,
@@ -241,7 +250,9 @@ async def _create_draft(ctx: Context, *, body: str, mode: str = "new",
         else:  # forward — create_forward REQUIRES to_recipients (5.0.3)
             final_subject = subject or _prefixed("Fwd: ", getattr(original, "subject", None))
             reply = original.create_forward(
-                final_subject, html_body, list(to),
+                final_subject,
+                html_body,
+                list(to),
                 cc_recipients=list(cc) if cc else None,
                 bcc_recipients=list(bcc) if bcc else None,
             )
@@ -262,20 +273,23 @@ async def _create_draft(ctx: Context, *, body: str, mode: str = "new",
     }
 
 
-async def _update_draft(ctx: Context, *, draft_id: str,
-                        to: Optional[List[str]] = None,
-                        cc: Optional[List[str]] = None,
-                        bcc: Optional[List[str]] = None,
-                        subject: Optional[str] = None,
-                        body: Optional[str] = None) -> Dict[str, Any]:
+async def _update_draft(
+    ctx: Context,
+    *,
+    draft_id: str,
+    to: Optional[List[str]] = None,
+    cc: Optional[List[str]] = None,
+    bcc: Optional[List[str]] = None,
+    subject: Optional[str] = None,
+    body: Optional[str] = None,
+) -> Dict[str, Any]:
     if to is None and cc is None and bcc is None and subject is None and body is None:
         raise ToolError("validation", "nothing to update: pass to/cc/bcc/subject/body")
 
     def work(account: Any) -> Dict[str, Any]:
         msg = _fetch_one(account, draft_id)
         changed: List[str] = []  # update_fields uses exchangelib field names
-        for value, field in ((to, "to_recipients"), (cc, "cc_recipients"),
-                             (bcc, "bcc_recipients")):
+        for value, field in ((to, "to_recipients"), (cc, "cc_recipients"), (bcc, "bcc_recipients")):
             if value is not None:
                 setattr(msg, field, list(value))
                 changed.append(field)
@@ -295,8 +309,7 @@ async def _update_draft(ctx: Context, *, draft_id: str,
         }
 
     preview = await ctx.gateway.call(work)
-    return {"ok": True, "draft_id": ctx.aliaser.alias_for(draft_id, "d"),
-            "preview": preview}
+    return {"ok": True, "draft_id": ctx.aliaser.alias_for(draft_id, "d"), "preview": preview}
 
 
 async def _delete_draft(ctx: Context, *, draft_id: str) -> Dict[str, Any]:
@@ -309,25 +322,29 @@ async def _delete_draft(ctx: Context, *, draft_id: str) -> Dict[str, Any]:
     return await ctx.gateway.call(work)
 
 
-async def _update_messages(ctx: Context, *, ids: List[str],
-                           set_read: Optional[bool] = None,
-                           categories_add: Optional[List[str]] = None,
-                           categories_remove: Optional[List[str]] = None) -> Dict[str, Any]:
+async def _update_messages(
+    ctx: Context,
+    *,
+    ids: List[str],
+    set_read: Optional[bool] = None,
+    categories_add: Optional[List[str]] = None,
+    categories_remove: Optional[List[str]] = None,
+) -> Dict[str, Any]:
     # NOTE: there is deliberately NO set_flag parameter — exchangelib 5.0.3
     # exposes no first-class follow-up flag field, and pretending would be
     # mock-drift bait. Categories are the visible marker (see description).
     _require_bulk(ids)
     if set_read is None and not categories_add and not categories_remove:
-        raise ToolError("validation",
-                        "nothing to update: pass set_read and/or categories_add/_remove")
+        raise ToolError(
+            "validation", "nothing to update: pass set_read and/or categories_add/_remove"
+        )
     remove = set(categories_remove or [])
     ok_ids: List[str] = []
     final_cats: List[tuple] = []
 
     def work(account: Any) -> Dict[str, Any]:
         updated, failed = 0, []
-        fetched = _fetch_many(account, ids,
-                              only=["id", "changekey", "is_read", "categories"])
+        fetched = _fetch_many(account, ids, only=["id", "changekey", "is_read", "categories"])
         for raw_id, item in zip(ids, fetched):
             try:  # per-item isolation: one failure never aborts the batch
                 if isinstance(item, Exception):
@@ -359,8 +376,7 @@ async def _update_messages(ctx: Context, *, ids: List[str],
     return result
 
 
-async def _move_messages(ctx: Context, *, ids: List[str],
-                         to_folder: str) -> Dict[str, Any]:
+async def _move_messages(ctx: Context, *, ids: List[str], to_folder: str) -> Dict[str, Any]:
     _require_bulk(ids)
 
     moved_old_ids: List[str] = []
@@ -386,8 +402,9 @@ async def _move_messages(ctx: Context, *, ids: List[str],
                     alias = ctx.aliaser.alias_for(new_raw or raw_id, "m")
                 row: Dict[str, Any] = {"id": alias}
                 if new_raw is None:
-                    row["note"] = ("moved, but Exchange returned no new id — "
-                                   "re-search before reusing this id")
+                    row["note"] = (
+                        "moved, but Exchange returned no new id — re-search before reusing this id"
+                    )
                 moved.append(row)
                 moved_old_ids.append(raw_id)
             except Exception as exc:
@@ -402,11 +419,17 @@ async def _move_messages(ctx: Context, *, ids: List[str],
     return result
 
 
-async def _create_event(ctx: Context, *, subject: str, start: str, end: str,
-                        attendees: Optional[List[str]] = None,
-                        location: Optional[str] = None,
-                        body: Optional[str] = None,
-                        send_invitations: bool = False) -> Dict[str, Any]:
+async def _create_event(
+    ctx: Context,
+    *,
+    subject: str,
+    start: str,
+    end: str,
+    attendees: Optional[List[str]] = None,
+    location: Optional[str] = None,
+    body: Optional[str] = None,
+    send_invitations: bool = False,
+) -> Dict[str, Any]:
     # The ONE handler-side safety check in this pack, by design: this tool is
     # class "write" so a no-invite event stays available at draft tier, but
     # the dispatcher kill-switch only covers class "send". Invitations leave
@@ -417,8 +440,7 @@ async def _create_event(ctx: Context, *, subject: str, start: str, end: str,
             "kill_switch",
             "create_event with send_invitations=true is blocked: "
             "SEND_ENABLED=false on this server.",
-            hint="Save the event without invitations, or have the operator "
-                 "flip SEND_ENABLED.",
+            hint="Save the event without invitations, or have the operator flip SEND_ENABLED.",
         )
     start_dt = parse_when(start, "start", ctx.settings.ews_tz)
     end_dt = parse_when(end, "end", ctx.settings.ews_tz)
@@ -426,8 +448,9 @@ async def _create_event(ctx: Context, *, subject: str, start: str, end: str,
         raise ToolError("validation", "end must be after start")
 
     def work(account: Any) -> str:
-        item = CalendarItem(account=account, folder=account.calendar,
-                            subject=subject, start=start_dt, end=end_dt)
+        item = CalendarItem(
+            account=account, folder=account.calendar, subject=subject, start=start_dt, end=end_dt
+        )
         if attendees:
             # AttendeesField coerces plain email strings to Attendee (5.0.3).
             item.required_attendees = list(attendees)
@@ -435,22 +458,30 @@ async def _create_event(ctx: Context, *, subject: str, start: str, end: str,
             item.location = location
         if body is not None:
             item.body = _wrap_html(body)
-        item.save(send_meeting_invitations=SEND_TO_ALL_AND_SAVE_COPY
-                  if send_invitations else SEND_TO_NONE)
+        item.save(
+            send_meeting_invitations=SEND_TO_ALL_AND_SAVE_COPY if send_invitations else SEND_TO_NONE
+        )
         return str(item.id)
 
     raw_id = await ctx.gateway.call(work)
-    return {"ok": True, "event_id": ctx.aliaser.alias_for(raw_id, "e"),
-            "invitations_sent": bool(send_invitations)}
+    return {
+        "ok": True,
+        "event_id": ctx.aliaser.alias_for(raw_id, "e"),
+        "invitations_sent": bool(send_invitations),
+    }
 
 
-async def _update_event(ctx: Context, *, event_id: str,
-                        subject: Optional[str] = None,
-                        start: Optional[str] = None,
-                        end: Optional[str] = None,
-                        location: Optional[str] = None,
-                        body: Optional[str] = None,
-                        notify_attendees: bool = False) -> Dict[str, Any]:
+async def _update_event(
+    ctx: Context,
+    *,
+    event_id: str,
+    subject: Optional[str] = None,
+    start: Optional[str] = None,
+    end: Optional[str] = None,
+    location: Optional[str] = None,
+    body: Optional[str] = None,
+    notify_attendees: bool = False,
+) -> Dict[str, Any]:
     # Same documented exception as create_event: write-class for tier, but
     # notifications leave the org → the send kill-switch applies.
     if notify_attendees and not ctx.settings.send_enabled:
@@ -461,25 +492,31 @@ async def _update_event(ctx: Context, *, event_id: str,
             hint="Update without notifying, or have the operator flip SEND_ENABLED.",
         )
     if all(v is None for v in (subject, start, end, location, body)):
-        raise ToolError("validation",
-                        "nothing to update: pass subject/start/end/location/body")
+        raise ToolError("validation", "nothing to update: pass subject/start/end/location/body")
     start_dt = parse_when(start, "start", ctx.settings.ews_tz) if start else None
     end_dt = parse_when(end, "end", ctx.settings.ews_tz) if end else None
 
     def work(account: Any) -> Dict[str, Any]:
         item = _fetch_one(account, event_id)
         changed: List[str] = []
-        for value, field in ((subject, "subject"), (start_dt, "start"),
-                             (end_dt, "end"), (location, "location")):
+        for value, field in (
+            (subject, "subject"),
+            (start_dt, "start"),
+            (end_dt, "end"),
+            (location, "location"),
+        ):
             if value is not None:
                 setattr(item, field, value)
                 changed.append(field)
         if body is not None:
             item.body = _wrap_html(body)
             changed.append("body")
-        item.save(update_fields=changed,
-                  send_meeting_invitations=SEND_TO_CHANGED_AND_SAVE_COPY
-                  if notify_attendees else SEND_TO_NONE)
+        item.save(
+            update_fields=changed,
+            send_meeting_invitations=SEND_TO_CHANGED_AND_SAVE_COPY
+            if notify_attendees
+            else SEND_TO_NONE,
+        )
         return {"updated_fields": changed, "attendees_notified": bool(notify_attendees)}
 
     return await ctx.gateway.call(work)
@@ -551,8 +588,9 @@ def _send_confirm_needed(kwargs: Dict[str, Any]) -> bool:
     return True
 
 
-async def _send_draft(ctx: Context, *, draft_id: str,
-                      idempotency_key: Optional[str] = None) -> Dict[str, Any]:
+async def _send_draft(
+    ctx: Context, *, draft_id: str, idempotency_key: Optional[str] = None
+) -> Dict[str, Any]:
     if idempotency_key:
         prior = _idempotency_get(idempotency_key)
         if prior is not None:
@@ -570,23 +608,24 @@ async def _send_draft(ctx: Context, *, draft_id: str,
         # Draft with an id → SendItem; Exchange moves it from Drafts to Sent.
         msg.send(save_copy=True)
         imid = getattr(msg, "message_id", None)
-        return {"sent": True,
-                "internet_message_id": imid if isinstance(imid, str) else None}
+        return {"sent": True, "internet_message_id": imid if isinstance(imid, str) else None}
 
     result = await ctx.gateway.call(work)
     if idempotency_key:
-        _idempotency_put(idempotency_key, {"draft_id": draft_id,
-                                           "result": dict(result),
-                                           "ts": time.time()})
+        _idempotency_put(
+            idempotency_key, {"draft_id": draft_id, "result": dict(result), "ts": time.time()}
+        )
     return result
 
 
-async def _respond_to_event(ctx: Context, *, event_id: str, response: str,
-                            message: Optional[str] = None) -> Dict[str, Any]:
+async def _respond_to_event(
+    ctx: Context, *, event_id: str, response: str, message: Optional[str] = None
+) -> Dict[str, Any]:
     method = _RESPONSE_METHOD.get(response)
     if method is None:
-        raise ToolError("validation",
-                        f"response must be one of {sorted(_RESPONSE_METHOD)}, got {response!r}")
+        raise ToolError(
+            "validation", f"response must be one of {sorted(_RESPONSE_METHOD)}, got {response!r}"
+        )
 
     def work(account: Any) -> Dict[str, Any]:
         item = _fetch_one(account, event_id)
@@ -599,15 +638,18 @@ async def _respond_to_event(ctx: Context, *, event_id: str, response: str,
     return await ctx.gateway.call(work)
 
 
-async def _set_oof(ctx: Context, *, state: str,
-                   internal_reply: Optional[str] = None,
-                   external_reply: Optional[str] = None,
-                   start: Optional[str] = None,
-                   end: Optional[str] = None) -> Dict[str, Any]:
+async def _set_oof(
+    ctx: Context,
+    *,
+    state: str,
+    internal_reply: Optional[str] = None,
+    external_reply: Optional[str] = None,
+    start: Optional[str] = None,
+    end: Optional[str] = None,
+) -> Dict[str, Any]:
     target_state = _OOF_STATE.get(state)
     if target_state is None:
-        raise ToolError("validation",
-                        f"state must be one of {sorted(_OOF_STATE)}, got {state!r}")
+        raise ToolError("validation", f"state must be one of {sorted(_OOF_STATE)}, got {state!r}")
     if state != "disabled" and not internal_reply:
         raise ToolError("validation", f"internal_reply is required when state={state!r}")
     if state == "scheduled" and not (start and end):
@@ -635,8 +677,9 @@ async def _set_oof(ctx: Context, *, state: str,
 # --- DESTRUCTIVE class (tier full) -------------------------------------------
 
 
-async def _cancel_event(ctx: Context, *, event_id: str,
-                        message: Optional[str] = None) -> Dict[str, Any]:
+async def _cancel_event(
+    ctx: Context, *, event_id: str, message: Optional[str] = None
+) -> Dict[str, Any]:
     def work(account: Any) -> Dict[str, Any]:
         item = _fetch_one(account, event_id)
         kwargs = {"new_body": message} if message else {}
@@ -648,11 +691,11 @@ async def _cancel_event(ctx: Context, *, event_id: str,
     return await ctx.gateway.call(work)
 
 
-async def _delete_messages(ctx: Context, *, ids: List[str],
-                           disposition: str = "trash") -> Dict[str, Any]:
+async def _delete_messages(
+    ctx: Context, *, ids: List[str], disposition: str = "trash"
+) -> Dict[str, Any]:
     if disposition not in ("trash", "soft", "permanent"):
-        raise ToolError("validation",
-                        "disposition must be 'trash', 'soft' or 'permanent'")
+        raise ToolError("validation", "disposition must be 'trash', 'soft' or 'permanent'")
     _require_bulk(ids)
 
     deleted_ids: List[str] = []
@@ -686,15 +729,18 @@ async def _delete_messages(ctx: Context, *, ids: List[str],
 
 
 def _obj(props: Dict[str, Any], required: Optional[List[str]] = None) -> Dict[str, Any]:
-    return {"type": "object", "properties": props,
-            "required": required or [], "additionalProperties": False}
+    return {
+        "type": "object",
+        "properties": props,
+        "required": required or [],
+        "additionalProperties": False,
+    }
 
 
 _STR = {"type": "string"}
 _BOOL = {"type": "boolean"}
 _EMAILS = {"type": "array", "items": {"type": "string"}}
-_IDS = {"type": "array", "items": {"type": "string"},
-        "minItems": 1, "maxItems": MAX_BULK_IDS}
+_IDS = {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": MAX_BULK_IDS}
 
 
 # --- the pack -----------------------------------------------------------------
@@ -710,31 +756,48 @@ TOOLS: List[ToolSpec] = [
             "importance applies to mode=new only. Use send_draft to send."
         ),
         side_effect_class="write",
-        input_schema=_obj({
-            "mode": {"type": "string", "enum": list(_DRAFT_MODES), "default": "new"},
-            "reply_to": _STR, "to": _EMAILS, "cc": _EMAILS, "bcc": _EMAILS,
-            "subject": _STR, "body": _STR,
-            "importance": {"type": "string", "enum": ["normal", "high"]},
-        }, required=["body"]),
+        input_schema=_obj(
+            {
+                "mode": {"type": "string", "enum": list(_DRAFT_MODES), "default": "new"},
+                "reply_to": _STR,
+                "to": _EMAILS,
+                "cc": _EMAILS,
+                "bcc": _EMAILS,
+                "subject": _STR,
+                "body": _STR,
+                "importance": {"type": "string", "enum": ["normal", "high"]},
+            },
+            required=["body"],
+        ),
         handler=_create_draft,
         confirm=False,
     ),
     ToolSpec(
         name="update_draft",
-        description=("Update fields of an existing draft (to/cc/bcc/subject/body). "
-                     "Only the supplied fields change."),
+        description=(
+            "Update fields of an existing draft (to/cc/bcc/subject/body). "
+            "Only the supplied fields change."
+        ),
         side_effect_class="write",
-        input_schema=_obj({
-            "draft_id": _STR, "to": _EMAILS, "cc": _EMAILS, "bcc": _EMAILS,
-            "subject": _STR, "body": _STR,
-        }, required=["draft_id"]),
+        input_schema=_obj(
+            {
+                "draft_id": _STR,
+                "to": _EMAILS,
+                "cc": _EMAILS,
+                "bcc": _EMAILS,
+                "subject": _STR,
+                "body": _STR,
+            },
+            required=["draft_id"],
+        ),
         handler=_update_draft,
         confirm=False,
     ),
     ToolSpec(
         name="delete_draft",
-        description=("Move a draft to trash (recoverable). Refuses items that "
-                     "are not in f:drafts."),
+        description=(
+            "Move a draft to trash (recoverable). Refuses items that are not in f:drafts."
+        ),
         side_effect_class="write",
         input_schema=_obj({"draft_id": _STR}, required=["draft_id"]),
         handler=_delete_draft,
@@ -749,21 +812,27 @@ TOOLS: List[ToolSpec] = [
             "categories_add (e.g. ['Follow up']) as the visible marker."
         ),
         side_effect_class="write",
-        input_schema=_obj({
-            "ids": _IDS, "set_read": _BOOL,
-            "categories_add": _EMAILS, "categories_remove": _EMAILS,
-        }, required=["ids"]),
+        input_schema=_obj(
+            {
+                "ids": _IDS,
+                "set_read": _BOOL,
+                "categories_add": _EMAILS,
+                "categories_remove": _EMAILS,
+            },
+            required=["ids"],
+        ),
         handler=_update_messages,
         confirm=False,
     ),
     ToolSpec(
         name="move_messages",
-        description=("Move up to 50 messages to a folder (id, f:alias or path). "
-                     "Message ids are re-bound automatically: the SAME id keeps "
-                     "working after the move."),
+        description=(
+            "Move up to 50 messages to a folder (id, f:alias or path). "
+            "Message ids are re-bound automatically: the SAME id keeps "
+            "working after the move."
+        ),
         side_effect_class="write",
-        input_schema=_obj({"ids": _IDS, "to_folder": _STR},
-                          required=["ids", "to_folder"]),
+        input_schema=_obj({"ids": _IDS, "to_folder": _STR}, required=["ids", "to_folder"]),
         handler=_move_messages,
         confirm=False,
     ),
@@ -776,11 +845,18 @@ TOOLS: List[ToolSpec] = [
             "confirm + send kill-switch apply."
         ),
         side_effect_class="write",  # tier: draft; invite path confirm-gated below
-        input_schema=_obj({
-            "subject": _STR, "start": _STR, "end": _STR,
-            "attendees": _EMAILS, "location": _STR, "body": _STR,
-            "send_invitations": {"type": "boolean", "default": False},
-        }, required=["subject", "start", "end"]),
+        input_schema=_obj(
+            {
+                "subject": _STR,
+                "start": _STR,
+                "end": _STR,
+                "attendees": _EMAILS,
+                "location": _STR,
+                "body": _STR,
+                "send_invitations": {"type": "boolean", "default": False},
+            },
+            required=["subject", "start", "end"],
+        ),
         handler=_create_event,
         confirm=lambda kw: bool(kw.get("send_invitations")),
     ),
@@ -792,11 +868,18 @@ TOOLS: List[ToolSpec] = [
             "changed attendees → two-phase confirm + send kill-switch apply."
         ),
         side_effect_class="write",
-        input_schema=_obj({
-            "event_id": _STR, "subject": _STR, "start": _STR, "end": _STR,
-            "location": _STR, "body": _STR,
-            "notify_attendees": {"type": "boolean", "default": False},
-        }, required=["event_id"]),
+        input_schema=_obj(
+            {
+                "event_id": _STR,
+                "subject": _STR,
+                "start": _STR,
+                "end": _STR,
+                "location": _STR,
+                "body": _STR,
+                "notify_attendees": {"type": "boolean", "default": False},
+            },
+            required=["event_id"],
+        ),
         handler=_update_event,
         confirm=lambda kw: bool(kw.get("notify_attendees")),
     ),
@@ -812,32 +895,37 @@ TOOLS: List[ToolSpec] = [
             "the stored result)."
         ),
         side_effect_class="send",
-        input_schema=_obj({"draft_id": _STR, "idempotency_key": _STR},
-                          required=["draft_id"]),
+        input_schema=_obj({"draft_id": _STR, "idempotency_key": _STR}, required=["draft_id"]),
         handler=_send_draft,
         confirm=_send_confirm_needed,
         preview=_send_draft_preview,
     ),
     ToolSpec(
         name="respond_to_event",
-        description=("Accept/tentative/decline a meeting — this SENDS a response "
-                     "to the organizer, so it is two-phase confirmed."),
+        description=(
+            "Accept/tentative/decline a meeting — this SENDS a response "
+            "to the organizer, so it is two-phase confirmed."
+        ),
         side_effect_class="send",
-        input_schema=_obj({
-            "event_id": _STR,
-            "response": {"type": "string", "enum": sorted(_RESPONSE_METHOD)},
-            "message": _STR,
-        }, required=["event_id", "response"]),
+        input_schema=_obj(
+            {
+                "event_id": _STR,
+                "response": {"type": "string", "enum": sorted(_RESPONSE_METHOD)},
+                "message": _STR,
+            },
+            required=["event_id", "response"],
+        ),
         handler=_respond_to_event,
         confirm=True,
     ),
     ToolSpec(
         name="cancel_event",
-        description=("Cancel a meeting you organize — sends cancellations to all "
-                     "attendees (destructive, two-phase confirmed)."),
+        description=(
+            "Cancel a meeting you organize — sends cancellations to all "
+            "attendees (destructive, two-phase confirmed)."
+        ),
         side_effect_class="destructive",
-        input_schema=_obj({"event_id": _STR, "message": _STR},
-                          required=["event_id"]),
+        input_schema=_obj({"event_id": _STR, "message": _STR}, required=["event_id"]),
         handler=_cancel_event,
         confirm=True,
     ),
@@ -850,12 +938,17 @@ TOOLS: List[ToolSpec] = [
             "dispositions need the full tier in v5.0 (conservative)."
         ),
         side_effect_class="destructive",
-        input_schema=_obj({
-            "ids": _IDS,
-            "disposition": {"type": "string",
-                            "enum": ["trash", "soft", "permanent"],
-                            "default": "trash"},
-        }, required=["ids"]),
+        input_schema=_obj(
+            {
+                "ids": _IDS,
+                "disposition": {
+                    "type": "string",
+                    "enum": ["trash", "soft", "permanent"],
+                    "default": "trash",
+                },
+            },
+            required=["ids"],
+        ),
         handler=_delete_messages,
         confirm=lambda kw: kw.get("disposition") == "permanent",
     ),
@@ -868,11 +961,16 @@ TOOLS: List[ToolSpec] = [
             "internal_reply when omitted."
         ),
         side_effect_class="send",
-        input_schema=_obj({
-            "state": {"type": "string", "enum": sorted(_OOF_STATE)},
-            "internal_reply": _STR, "external_reply": _STR,
-            "start": _STR, "end": _STR,
-        }, required=["state"]),
+        input_schema=_obj(
+            {
+                "state": {"type": "string", "enum": sorted(_OOF_STATE)},
+                "internal_reply": _STR,
+                "external_reply": _STR,
+                "start": _STR,
+                "end": _STR,
+            },
+            required=["state"],
+        ),
         handler=_set_oof,
         confirm=True,
     ),

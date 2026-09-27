@@ -13,10 +13,21 @@ import pytest
 from ewsmcp.cache.store import CacheStore
 
 
-def make_row(ews_id, *, folder="inbox", subject="Budget review",
-             sender_email="a@corp.example", sender_name="Ahmed",
-             body="please review the numbers", date_ts=None, is_read=1,
-             has_attachments=0, conv="CONV-1", imid=None, to=None):
+def make_row(
+    ews_id,
+    *,
+    folder="inbox",
+    subject="Budget review",
+    sender_email="a@corp.example",
+    sender_name="Ahmed",
+    body="please review the numbers",
+    date_ts=None,
+    is_read=1,
+    has_attachments=0,
+    conv="CONV-1",
+    imid=None,
+    to=None,
+):
     return {
         "ews_id": ews_id,
         "changekey": "CK",
@@ -34,8 +45,7 @@ def make_row(ews_id, *, folder="inbox", subject="Budget review",
         "categories_json": "[]",
         "body_clean": body,
         "internet_message_id": imid or f"<{ews_id}@corp.example>",
-        "norm_text": CacheStore.norm_for_row(subject, sender_name,
-                                             sender_email, body),
+        "norm_text": CacheStore.norm_for_row(subject, sender_name, sender_email, body),
     }
 
 
@@ -47,10 +57,12 @@ def store(tmp_path):
 
 
 def test_upsert_and_fts_search(store):
-    store.upsert_messages([
-        make_row("M1", subject="Budget review", body="numbers attached"),
-        make_row("M2", subject="Lunch", body="see you at noon"),
-    ])
+    store.upsert_messages(
+        [
+            make_row("M1", subject="Budget review", body="numbers attached"),
+            make_row("M2", subject="Lunch", body="see you at noon"),
+        ]
+    )
     rows, total = store.search_messages(text="budget")
     assert total == 1 and rows[0]["ews_id"] == "M1"
     rows, total = store.search_messages(text="noon")
@@ -66,13 +78,15 @@ def test_upsert_and_fts_search(store):
 
 def test_structured_filters_and_exact_total(store):
     now = int(time.time())
-    store.upsert_messages([
-        make_row("M1", sender_email="a@x.example", is_read=0, date_ts=now - 100),
-        make_row("M2", sender_email="b@x.example", is_read=1, date_ts=now - 50,
-                 has_attachments=1),
-        make_row("M3", sender_email="a@x.example", is_read=1, date_ts=now,
-                 folder="sent"),
-    ])
+    store.upsert_messages(
+        [
+            make_row("M1", sender_email="a@x.example", is_read=0, date_ts=now - 100),
+            make_row(
+                "M2", sender_email="b@x.example", is_read=1, date_ts=now - 50, has_attachments=1
+            ),
+            make_row("M3", sender_email="a@x.example", is_read=1, date_ts=now, folder="sent"),
+        ]
+    )
     rows, total = store.search_messages(folders=["inbox"])
     assert total == 2
     rows, total = store.search_messages(sender="a@x")
@@ -91,11 +105,13 @@ def test_structured_filters_and_exact_total(store):
 
 
 def test_thread_join_and_get_message(store):
-    store.upsert_messages([
-        make_row("M1", conv="C9", date_ts=100),
-        make_row("M2", conv="C9", date_ts=200, folder="sent"),
-        make_row("M3", conv="OTHER", date_ts=300),
-    ])
+    store.upsert_messages(
+        [
+            make_row("M1", conv="C9", date_ts=100),
+            make_row("M2", conv="C9", date_ts=200, folder="sent"),
+            make_row("M3", conv="OTHER", date_ts=300),
+        ]
+    )
     rows = store.thread("C9")
     assert [r["ews_id"] for r in rows] == ["M1", "M2"]  # chronological
     assert store.get_message("M3")["conversation_id"] == "OTHER"
@@ -117,11 +133,13 @@ def test_write_through_patches(store):
 
 
 def test_unread_page_and_watermarks(store):
-    store.upsert_messages([
-        make_row("M1", is_read=0, date_ts=100),
-        make_row("M2", is_read=0, date_ts=200),
-        make_row("M3", is_read=1, date_ts=300),
-    ])
+    store.upsert_messages(
+        [
+            make_row("M1", is_read=0, date_ts=100),
+            make_row("M2", is_read=0, date_ts=200),
+            make_row("M3", is_read=1, date_ts=300),
+        ]
+    )
     total, rows = store.unread_page(limit=1)
     assert total == 2
     assert rows[0]["ews_id"] == "M2"  # newest unread first
@@ -151,14 +169,19 @@ def test_stats_and_purge(store):
 
 def test_contact_stats_and_senders(store):
     now = int(time.time())
-    store.upsert_messages([
-        make_row("M1", sender_email="boss@corp.example", sender_name="Boss",
-                 date_ts=now - 500),
-        make_row("M2", sender_email="boss@corp.example", sender_name="Boss",
-                 date_ts=now - 100),
-        make_row("M3", folder="sent", sender_email="exec@corp.example",
-                 to=["boss@corp.example"], date_ts=now - 50),
-    ])
+    store.upsert_messages(
+        [
+            make_row("M1", sender_email="boss@corp.example", sender_name="Boss", date_ts=now - 500),
+            make_row("M2", sender_email="boss@corp.example", sender_name="Boss", date_ts=now - 100),
+            make_row(
+                "M3",
+                folder="sent",
+                sender_email="exec@corp.example",
+                to=["boss@corp.example"],
+                date_ts=now - 50,
+            ),
+        ]
+    )
     stats = store.contact_stats("boss@corp.example")
     assert stats["received_count"] == 2
     assert stats["sent_count"] == 1
@@ -170,29 +193,44 @@ def test_contact_stats_and_senders(store):
 def test_sent_without_reply(store):
     now = int(time.time())
     old = now - 6 * 86400
-    store.upsert_messages([
-        # thread A: we sent last, no reply for 6 days → waiting_on
-        make_row("A1", conv="CA", folder="sent", date_ts=old,
-                 subject="Waiting thread"),
-        # thread B: we sent, then they replied → NOT waiting
-        make_row("B1", conv="CB", folder="sent", date_ts=old),
-        make_row("B2", conv="CB", folder="inbox", date_ts=old + 3600),
-        # thread C: we sent recently (inside the window) → NOT waiting yet
-        make_row("C1", conv="CC", folder="sent", date_ts=now - 3600),
-    ])
+    store.upsert_messages(
+        [
+            # thread A: we sent last, no reply for 6 days → waiting_on
+            make_row("A1", conv="CA", folder="sent", date_ts=old, subject="Waiting thread"),
+            # thread B: we sent, then they replied → NOT waiting
+            make_row("B1", conv="CB", folder="sent", date_ts=old),
+            make_row("B2", conv="CB", folder="inbox", date_ts=old + 3600),
+            # thread C: we sent recently (inside the window) → NOT waiting yet
+            make_row("C1", conv="CC", folder="sent", date_ts=now - 3600),
+        ]
+    )
     rows = store.sent_without_reply(days=5)
     assert [r["ews_id"] for r in rows] == ["A1"]
 
 
 def test_task_rows(store):
-    store.upsert_tasks([
-        {"ews_id": "T1", "changekey": None, "subject": "File report",
-         "due_ts": 100, "due_iso": "2026-07-01", "is_complete": 0,
-         "status": "NotStarted"},
-        {"ews_id": "T2", "changekey": None, "subject": "Done thing",
-         "due_ts": 50, "due_iso": "2026-06-01", "is_complete": 1,
-         "status": "Completed"},
-    ])
+    store.upsert_tasks(
+        [
+            {
+                "ews_id": "T1",
+                "changekey": None,
+                "subject": "File report",
+                "due_ts": 100,
+                "due_iso": "2026-07-01",
+                "is_complete": 0,
+                "status": "NotStarted",
+            },
+            {
+                "ews_id": "T2",
+                "changekey": None,
+                "subject": "Done thing",
+                "due_ts": 50,
+                "due_iso": "2026-06-01",
+                "is_complete": 1,
+                "status": "Completed",
+            },
+        ]
+    )
     rows, total = store.task_rows()
     assert total == 1 and rows[0]["ews_id"] == "T1"
     rows, total = store.task_rows(include_completed=True)

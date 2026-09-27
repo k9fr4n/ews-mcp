@@ -21,8 +21,12 @@ def fmt_dt(value: Any, tz: str) -> Optional[str]:
 _DERIVE = object()  # sentinel: derive next_offset from total_available
 
 
-def envelope(items: List[Dict[str, Any]], total_available: Optional[int],
-             offset: int, next_offset: Any = _DERIVE) -> Dict[str, Any]:
+def envelope(
+    items: List[Dict[str, Any]],
+    total_available: Optional[int],
+    offset: int,
+    next_offset: Any = _DERIVE,
+) -> Dict[str, Any]:
     """Canonical paged envelope: {items, count, total_available, next_offset}.
 
     ``next_offset`` may be passed explicitly (lookahead pagination knows it
@@ -51,10 +55,7 @@ def _addr(mailbox: Any) -> str:
 
 
 def _emails(recipients: Any) -> List[str]:
-    return [
-        r.email_address for r in (recipients or [])
-        if getattr(r, "email_address", None)
-    ]
+    return [r.email_address for r in (recipients or []) if getattr(r, "email_address", None)]
 
 
 def msg_card(item: Any, aliaser: IdAliaser, tz: str) -> Dict[str, Any]:
@@ -64,7 +65,9 @@ def msg_card(item: Any, aliaser: IdAliaser, tz: str) -> Dict[str, Any]:
         text = strip_quoted_history(text)[0] or text
     except Exception:
         pass
-    raw_id = getattr(getattr(item, "id", None), "__str__", lambda: None)() or getattr(item, "id", None)
+    raw_id = getattr(getattr(item, "id", None), "__str__", lambda: None)() or getattr(
+        item, "id", None
+    )
     imid = getattr(item, "message_id", None)
     card: Dict[str, Any] = {
         "id": aliaser.alias_for(str(raw_id), "m", internet_message_id=imid) if raw_id else None,
@@ -89,8 +92,9 @@ def msg_card(item: Any, aliaser: IdAliaser, tz: str) -> Dict[str, Any]:
     return card
 
 
-def msg_full(item: Any, aliaser: IdAliaser, tz: str, body_max_chars: int,
-             include_html: bool = False) -> Dict[str, Any]:
+def msg_full(
+    item: Any, aliaser: IdAliaser, tz: str, body_max_chars: int, include_html: bool = False
+) -> Dict[str, Any]:
     """MsgFull: card + cleaned body + recipients + attachment inventory."""
     full = msg_card(item, aliaser, tz)
     full["to"] = _emails(getattr(item, "to_recipients", None))
@@ -117,12 +121,14 @@ def msg_full(item: Any, aliaser: IdAliaser, tz: str, body_max_chars: int,
         full["body_html"] = raw_html
     attachments = []
     for i, att in enumerate(getattr(item, "attachments", None) or []):
-        attachments.append({
-            "idx": i,
-            "name": getattr(att, "name", f"attachment-{i}"),
-            "size_bytes": getattr(att, "size", None),
-            "content_type": getattr(att, "content_type", None),
-        })
+        attachments.append(
+            {
+                "idx": i,
+                "name": getattr(att, "name", f"attachment-{i}"),
+                "size_bytes": getattr(att, "size", None),
+                "content_type": getattr(att, "content_type", None),
+            }
+        )
     if attachments:
         full["attachments"] = attachments
     imid = getattr(item, "message_id", None)

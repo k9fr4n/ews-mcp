@@ -42,30 +42,69 @@ class RecordingGateway:
 def seeded_store(tmp_path):
     store = CacheStore(tmp_path / "mirror.db")
     now = int(time.time())
-    store.upsert_messages([
-        make_row("RAW-1", subject="Budget review", sender_email="a@corp.example",
-                 body="please review the numbers", date_ts=now - 300,
-                 conv="C1", is_read=0),
-        make_row("RAW-2", subject="Re: Budget review", folder="sent",
-                 sender_email="exec@corp.example", body="looks good",
-                 date_ts=now - 200, conv="C1"),
-        make_row("RAW-3", subject="Lunch", sender_email="b@corp.example",
-                 body="see you at noon", date_ts=now - 100, conv="C2"),
-    ])
+    store.upsert_messages(
+        [
+            make_row(
+                "RAW-1",
+                subject="Budget review",
+                sender_email="a@corp.example",
+                body="please review the numbers",
+                date_ts=now - 300,
+                conv="C1",
+                is_read=0,
+            ),
+            make_row(
+                "RAW-2",
+                subject="Re: Budget review",
+                folder="sent",
+                sender_email="exec@corp.example",
+                body="looks good",
+                date_ts=now - 200,
+                conv="C1",
+            ),
+            make_row(
+                "RAW-3",
+                subject="Lunch",
+                sender_email="b@corp.example",
+                body="see you at noon",
+                date_ts=now - 100,
+                conv="C2",
+            ),
+        ]
+    )
     store.set_sync_state("item:inbox", "TOK", now)
     store.set_sync_state("item:sent", "TOK", now)
     store.set_sync_state("events", None, now)
-    store.replace_events([{
-        "ews_id": "EV1", "changekey": None, "subject": "Standup",
-        "start_ts": now - 60, "start_iso": "2026-07-10T09:00+03:00",
-        "end_ts": now + 3600, "end_iso": "2026-07-10T10:00+03:00",
-        "location": None, "organizer": None, "is_recurring": 0,
-        "my_response": None,
-    }])
-    store.replace_folders([{
-        "ews_id": "F-IN", "name": "Inbox", "path": "Inbox", "wk": "f:inbox",
-        "total": 3, "unread": 1, "children": 0,
-    }])
+    store.replace_events(
+        [
+            {
+                "ews_id": "EV1",
+                "changekey": None,
+                "subject": "Standup",
+                "start_ts": now - 60,
+                "start_iso": "2026-07-10T09:00+03:00",
+                "end_ts": now + 3600,
+                "end_iso": "2026-07-10T10:00+03:00",
+                "location": None,
+                "organizer": None,
+                "is_recurring": 0,
+                "my_response": None,
+            }
+        ]
+    )
+    store.replace_folders(
+        [
+            {
+                "ews_id": "F-IN",
+                "name": "Inbox",
+                "path": "Inbox",
+                "wk": "f:inbox",
+                "total": 3,
+                "unread": 1,
+                "children": 0,
+            }
+        ]
+    )
     return store
 
 
@@ -117,8 +156,7 @@ def test_get_thread_local_conversation_join(tmp_path):
     res = _run(ctx, "get_thread", id="RAW-1")
     assert res["source"] == "cache"
     assert res["count"] == 2  # inbox + sent halves of C1
-    assert [e["from"] for e in res["items"]] == ["a@corp.example",
-                                                 "exec@corp.example"]
+    assert [e["from"] for e in res["items"]] == ["a@corp.example", "exec@corp.example"]
 
 
 def test_overview_pure_mirror(tmp_path):
@@ -172,6 +210,7 @@ def test_cache_error_falls_back_to_live(tmp_path):
             pass
 
     from unittest.mock import MagicMock
+
     account = MagicMock()
     account.inbox = _Query()
     gateway.account = account

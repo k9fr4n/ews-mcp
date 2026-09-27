@@ -17,8 +17,7 @@ from .base import Context, ToolSpec
 
 logger = logging.getLogger(__name__)
 
-_TASK_PROJECTION = ("id", "changekey", "subject", "due_date", "is_complete",
-                    "status")
+_TASK_PROJECTION = ("id", "changekey", "subject", "due_date", "is_complete", "status")
 
 
 def _task_row_dto(ctx: Context, row: Any) -> Dict[str, Any]:
@@ -36,6 +35,7 @@ def _task_row_dto(ctx: Context, row: Any) -> Dict[str, Any]:
 
 def _task_item_dto(ctx: Context, item: Any, tz: str) -> Dict[str, Any]:
     from ..dto import fmt_dt
+
     due = getattr(item, "due_date", None)
     out: Dict[str, Any] = {
         "id": ctx.aliaser.alias_for(str(item.id), "k"),
@@ -43,23 +43,27 @@ def _task_item_dto(ctx: Context, item: Any, tz: str) -> Dict[str, Any]:
         "complete": bool(getattr(item, "is_complete", False)),
     }
     if due is not None:
-        out["due"] = fmt_dt(due, tz) or (due.isoformat()
-                                         if hasattr(due, "isoformat") else str(due))
+        out["due"] = fmt_dt(due, tz) or (due.isoformat() if hasattr(due, "isoformat") else str(due))
     status = getattr(item, "status", None)
     if status:
         out["status"] = str(status)
     return out
 
 
-async def _list_tasks(ctx: Context, include_completed: bool = False,
-                      offset: int = 0, limit: int = 25,
-                      fresh: bool = False) -> Dict[str, Any]:
+async def _list_tasks(
+    ctx: Context,
+    include_completed: bool = False,
+    offset: int = 0,
+    limit: int = 25,
+    fresh: bool = False,
+) -> Dict[str, Any]:
     offset = max(0, int(offset))
     limit = max(1, min(int(limit), 100))
     if not fresh and ctx.cache is not None and ctx.cache.watermark("item:tasks"):
         try:
             rows, total = await asyncio.to_thread(
-                ctx.cache.task_rows, include_completed, offset, limit)
+                ctx.cache.task_rows, include_completed, offset, limit
+            )
             items = [_task_row_dto(ctx, r) for r in rows]
             out = envelope(items, total, offset)
             out["source"] = "cache"
@@ -84,14 +88,15 @@ async def _list_tasks(ctx: Context, include_completed: bool = False,
 
     items = await ctx.gateway.call(work)
     total = len(items)
-    page = items[offset:offset + limit]
+    page = items[offset : offset + limit]
     out = envelope([_task_item_dto(ctx, it, tz) for it in page], total, offset)
     out["source"] = "live"
     return out
 
 
-async def _update_task(ctx: Context, id: str, complete: Optional[bool] = None,
-                       due: Optional[str] = None) -> Dict[str, Any]:
+async def _update_task(
+    ctx: Context, id: str, complete: Optional[bool] = None, due: Optional[str] = None
+) -> Dict[str, Any]:
     # DATA-plane only by design: completion + due date. Renaming,
     # prioritizing and planning live in skills, not here.
     if complete is None and due is None:
@@ -101,8 +106,11 @@ async def _update_task(ctx: Context, id: str, complete: Optional[bool] = None,
     def work(account: Any) -> Dict[str, Any]:
         fetched = list(account.fetch(ids=[(id, None)]))
         if not fetched:
-            raise ToolError("not_found", "task not found — the id may be stale",
-                            hint="Re-run list_tasks for fresh ids.")
+            raise ToolError(
+                "not_found",
+                "task not found — the id may be stale",
+                hint="Re-run list_tasks for fresh ids.",
+            )
         item = fetched[0]
         if isinstance(item, Exception):
             raise item
@@ -122,17 +130,21 @@ async def _update_task(ctx: Context, id: str, complete: Optional[bool] = None,
     result = await ctx.gateway.call(work)
     if ctx.cache is not None:
         try:  # write-through; the slow sync lane repairs anything missed
-            row = {"ews_id": id, "changekey": None, "subject": "",
-                   "due_ts": int(due_dt.timestamp()) if due_dt else None,
-                   "due_iso": due_dt.date().isoformat() if due_dt else None,
-                   "is_complete": 1 if result["complete"] else 0,
-                   "status": None}
+            row = {
+                "ews_id": id,
+                "changekey": None,
+                "subject": "",
+                "due_ts": int(due_dt.timestamp()) if due_dt else None,
+                "due_iso": due_dt.date().isoformat() if due_dt else None,
+                "is_complete": 1 if result["complete"] else 0,
+                "status": None,
+            }
             existing = None
             try:
                 with ctx.cache._read() as conn:  # keep subject if we have it
                     existing = conn.execute(
-                        "SELECT subject, status, due_ts, due_iso FROM tasks "
-                        "WHERE ews_id=?", (id,)).fetchone()
+                        "SELECT subject, status, due_ts, due_iso FROM tasks WHERE ews_id=?", (id,)
+                    ).fetchone()
             except Exception:
                 existing = None
             if existing is not None:
@@ -147,8 +159,7 @@ async def _update_task(ctx: Context, id: str, complete: Optional[bool] = None,
     return {"ok": True, "task_id": ctx.aliaser.alias_for(id, "k"), **result}
 
 
-async def _waiting_on(ctx: Context, days: int = 5,
-                      limit: int = 25) -> Dict[str, Any]:
+async def _waiting_on(ctx: Context, days: int = 5, limit: int = 25) -> Dict[str, Any]:
     days = max(1, min(int(days), 90))
     limit = max(1, min(int(limit), 50))
     if ctx.cache is None or not ctx.cache.watermark("item:sent"):
@@ -156,21 +167,24 @@ async def _waiting_on(ctx: Context, days: int = 5,
             "upstream_unavailable",
             "waiting_on needs the local mirror (sent folder not synced yet)",
             hint="The cache warms up shortly after boot; check "
-                 "get_server_status.cache, or enable EWS_CACHE_ENABLED.",
+            "get_server_status.cache, or enable EWS_CACHE_ENABLED.",
         )
     rows = await asyncio.to_thread(ctx.cache.sent_without_reply, days, limit)
 
     def build(r: Any) -> Dict[str, Any]:
         import json as _json
+
         try:
             to = _json.loads(r["to_json"] or "[]")
         except ValueError:
             to = []
         return {
-            "id": ctx.aliaser.alias_for(r["ews_id"], "m",
-                                        internet_message_id=r["internet_message_id"]),
-            "thread": (ctx.aliaser.alias_for(r["conversation_id"], "t")
-                       if r["conversation_id"] else None),
+            "id": ctx.aliaser.alias_for(
+                r["ews_id"], "m", internet_message_id=r["internet_message_id"]
+            ),
+            "thread": (
+                ctx.aliaser.alias_for(r["conversation_id"], "t") if r["conversation_id"] else None
+            ),
             "to": to,
             "subject": r["subject"] or "",
             "sent": r["date_iso"],
@@ -180,8 +194,10 @@ async def _waiting_on(ctx: Context, days: int = 5,
     items = await asyncio.to_thread(lambda: [build(r) for r in rows])
     out = envelope(items, len(items), 0)
     out["source"] = "cache"
-    out["note"] = (f"sent threads with no inbound reply after {days} day(s); "
-                   "use get_thread on `thread` for context")
+    out["note"] = (
+        f"sent threads with no inbound reply after {days} day(s); "
+        "use get_thread on `thread` for context"
+    )
     return out
 
 
@@ -200,10 +216,12 @@ TOOLS: List[ToolSpec] = [
             "properties": {
                 "include_completed": {"type": "boolean", "default": False},
                 "offset": {"type": "integer", "minimum": 0, "default": 0},
-                "limit": {"type": "integer", "minimum": 1, "maximum": 100,
-                          "default": 25},
-                "fresh": {"type": "boolean", "default": False,
-                          "description": "true forces a live Exchange read."},
+                "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 25},
+                "fresh": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "true forces a live Exchange read.",
+                },
             },
             "required": [],
             "additionalProperties": False,
@@ -221,12 +239,15 @@ TOOLS: List[ToolSpec] = [
         input_schema={
             "type": "object",
             "properties": {
-                "id": {"type": "string",
-                       "description": "Task id (k-alias from list_tasks or raw)."},
+                "id": {
+                    "type": "string",
+                    "description": "Task id (k-alias from list_tasks or raw).",
+                },
                 "complete": {"type": "boolean"},
-                "due": {"type": "string",
-                        "description": "New due date: 'today', '+Nd', or "
-                                       "YYYY-MM-DD."},
+                "due": {
+                    "type": "string",
+                    "description": "New due date: 'today', '+Nd', or YYYY-MM-DD.",
+                },
             },
             "required": ["id"],
             "additionalProperties": False,
@@ -247,10 +268,8 @@ TOOLS: List[ToolSpec] = [
         input_schema={
             "type": "object",
             "properties": {
-                "days": {"type": "integer", "minimum": 1, "maximum": 90,
-                         "default": 5},
-                "limit": {"type": "integer", "minimum": 1, "maximum": 50,
-                          "default": 25},
+                "days": {"type": "integer", "minimum": 1, "maximum": 90, "default": 5},
+                "limit": {"type": "integer", "minimum": 1, "maximum": 50, "default": 25},
             },
             "required": [],
             "additionalProperties": False,

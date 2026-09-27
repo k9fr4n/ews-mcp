@@ -40,8 +40,7 @@ def test_probe_failure_is_reported_not_cached():
 
 def test_reset_evicts_protocol_cache_and_folder_cache(monkeypatch):
     cleared = []
-    monkeypatch.setattr(client_mod.CachingProtocol, "clear_cache",
-                        lambda: cleared.append(True))
+    monkeypatch.setattr(client_mod.CachingProtocol, "clear_cache", lambda: cleared.append(True))
     gw, account = _gateway_with_mock_account()
     gw._folder_cache = {"path": object()}
     gw._folder_cache_ts = 123.0
@@ -55,8 +54,10 @@ def test_reset_evicts_protocol_cache_and_folder_cache(monkeypatch):
 
 def test_reset_survives_close_and_clear_failures(monkeypatch):
     monkeypatch.setattr(
-        client_mod.CachingProtocol, "clear_cache",
-        lambda: (_ for _ in ()).throw(RuntimeError("cache locked")))
+        client_mod.CachingProtocol,
+        "clear_cache",
+        lambda: (_ for _ in ()).throw(RuntimeError("cache locked")),
+    )
     gw, account = _gateway_with_mock_account()
     account.protocol.close.side_effect = OSError("socket gone")
     gw.reset()  # must not raise
