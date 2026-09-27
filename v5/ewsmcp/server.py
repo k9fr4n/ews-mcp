@@ -19,14 +19,18 @@ logger = logging.getLogger(__name__)
 ACTIVE_CONTEXT: ContextVar[Any] = ContextVar("ewsmcp_active_context", default=None)
 
 ANNOTATIONS = {
-    "read": ToolAnnotations(readOnlyHint=True, destructiveHint=False,
-                            idempotentHint=True, openWorldHint=False),
-    "write": ToolAnnotations(readOnlyHint=False, destructiveHint=False,
-                             idempotentHint=False, openWorldHint=False),
-    "destructive": ToolAnnotations(readOnlyHint=False, destructiveHint=True,
-                                   idempotentHint=False, openWorldHint=False),
-    "send": ToolAnnotations(readOnlyHint=False, destructiveHint=True,
-                            idempotentHint=False, openWorldHint=True),
+    "read": ToolAnnotations(
+        readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False
+    ),
+    "write": ToolAnnotations(
+        readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False
+    ),
+    "destructive": ToolAnnotations(
+        readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False
+    ),
+    "send": ToolAnnotations(
+        readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=True
+    ),
 }
 
 
@@ -61,6 +65,7 @@ def build_context(settings: Settings, tenant_id: str = "") -> Context:
     if settings.ews_cache_enabled and not metadata_only:
         try:
             from .cache import CacheStore
+
             cache = CacheStore(f"{settings.data_dir}/cache/mirror.db")
             if settings.ews_cache_purge_on_boot:
                 cache.purge()
@@ -73,6 +78,7 @@ def build_context(settings: Settings, tenant_id: str = "") -> Context:
     else:
         try:
             from .semantic import build_semantic_index
+
             semantic = build_semantic_index(
                 settings, schema=f"ews_{tenant_id}" if tenant_id else "ews"
             )
@@ -109,12 +115,15 @@ async def start_connection_manager(ctx: Context) -> None:
         if ctx.cache is not None and ctx.sync is None:
             try:
                 from .cache import SyncEngine
-                ctx.sync = SyncEngine(ctx.settings, ctx.gateway, ctx.cache,
-                                      semantic=ctx.semantic)
+
+                ctx.sync = SyncEngine(ctx.settings, ctx.gateway, ctx.cache, semantic=ctx.semantic)
                 await ctx.sync.start()
             except Exception as exc:
-                logger.error("sync engine start failed (%s) — cache stays "
-                             "stale; reads fall back to live EWS", exc)
+                logger.error(
+                    "sync engine start failed (%s) — cache stays "
+                    "stale; reads fall back to live EWS",
+                    exc,
+                )
 
     await manager.start(on_warm=on_warm)
     logger.info("Exchange warmup running in background (see /readyz)")
@@ -128,12 +137,14 @@ def build_mcp_server(ctx: Context) -> Server:
         tools = []
         for spec in ctx.registry.values():
             schema = spec.public_schema()
-            tools.append(Tool(
-                name=schema["name"],
-                description=schema["description"],
-                inputSchema=schema["inputSchema"],
-                annotations=ANNOTATIONS.get(spec.side_effect_class, ANNOTATIONS["write"]),
-            ))
+            tools.append(
+                Tool(
+                    name=schema["name"],
+                    description=schema["description"],
+                    inputSchema=schema["inputSchema"],
+                    annotations=ANNOTATIONS.get(spec.side_effect_class, ANNOTATIONS["write"]),
+                )
+            )
         return tools
 
     @server.call_tool()
@@ -141,11 +152,14 @@ def build_mcp_server(ctx: Context) -> Server:
         active_ctx = ACTIVE_CONTEXT.get() or ctx
         spec = active_ctx.registry.get(name)
         if spec is None:
-            return {"ok": False, "error": {
-                "code": "validation",
-                "message": f"Unknown tool: {name}",
-                "hint": f"Available: {', '.join(sorted(active_ctx.registry))}",
-            }}
+            return {
+                "ok": False,
+                "error": {
+                    "code": "validation",
+                    "message": f"Unknown tool: {name}",
+                    "hint": f"Available: {', '.join(sorted(active_ctx.registry))}",
+                },
+            }
         return await dispatch(active_ctx, spec, dict(arguments or {}), transport="mcp")
 
     return server

@@ -68,13 +68,13 @@ def test_resolve_passes_through_non_alias_values(aliaser):
     # Raw EWS ids, arbitrary strings, and near-misses of the alias shape
     # must come back untouched.
     for value in (
-        RAW_A,                      # raw EWS id
-        "Inbox/Subfolder",          # arbitrary string
+        RAW_A,  # raw EWS id
+        "Inbox/Subfolder",  # arbitrary string
         "hello world",
-        "M1",                       # uppercase: not alias-shaped
-        "m",                        # no counter digits
-        "abc1",                     # three letters: not alias-shaped
-        "",                         # empty string
+        "M1",  # uppercase: not alias-shaped
+        "m",  # no counter digits
+        "abc1",  # three letters: not alias-shaped
+        "",  # empty string
     ):
         assert aliaser.resolve(value) == value
 
@@ -103,8 +103,8 @@ def test_rebind_unknown_old_id_returns_none(aliaser):
 
 
 def test_rebind_onto_id_already_aliased_elsewhere(aliaser):
-    first = aliaser.alias_for("ID-OLD=")    # m1
-    second = aliaser.alias_for("ID-NEW=")   # m2 — same item, seen post-move
+    first = aliaser.alias_for("ID-OLD=")  # m1
+    second = aliaser.alias_for("ID-NEW=")  # m2 — same item, seen post-move
     assert aliaser.rebind("ID-OLD=", "ID-NEW=") == first
     # The surviving handle is the one the model already holds.
     assert aliaser.resolve(first) == "ID-NEW="
@@ -155,9 +155,7 @@ def test_thread_safety_smoke(aliaser):
         for j in range(n_per_thread):
             results[i].append(aliaser.alias_for(f"ID-THREAD-{i}-{j}="))
 
-    threads = [
-        threading.Thread(target=worker, args=(i,)) for i in range(n_threads)
-    ]
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(n_threads)]
     for t in threads:
         t.start()
     for t in threads:

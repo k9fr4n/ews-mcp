@@ -74,9 +74,21 @@ class _FakeGateway:
         return self.account.inbox
 
 
-def _msg(raw_id, subject="Subj", sender="ahmed@corp.example", *, sender_name=None,
-         dt=None, is_read=True, has_attachments=False, text_body="",
-         conv="CONV-RAW-1=", message_id=None, attachments=None, to=None):
+def _msg(
+    raw_id,
+    subject="Subj",
+    sender="ahmed@corp.example",
+    *,
+    sender_name=None,
+    dt=None,
+    is_read=True,
+    has_attachments=False,
+    text_body="",
+    conv="CONV-RAW-1=",
+    message_id=None,
+    attachments=None,
+    to=None,
+):
     return SimpleNamespace(
         id=raw_id,
         subject=subject,
@@ -123,8 +135,12 @@ def _run(ctx, name, **kwargs):
 def test_pack_exports_six_read_specs():
     assert len(mail_read.TOOLS) == 6
     assert set(SPECS) == {
-        "list_folders", "search_messages", "get_message",
-        "get_thread", "get_attachment", "get_mailbox_overview",
+        "list_folders",
+        "search_messages",
+        "get_message",
+        "get_thread",
+        "get_attachment",
+        "get_mailbox_overview",
     }
     for spec in mail_read.TOOLS:
         assert spec.side_effect_class == "read"
@@ -136,11 +152,16 @@ def test_pack_exports_six_read_specs():
 
 
 def test_search_envelope_alias_ids_and_clean_snippet(tmp_path):
-    inbox = _Query([
-        _msg("RAW-1=", subject="RFP timeline",
-             text_body="Confirming the new deadline works." + QUOTED_TAIL),
-        _msg("RAW-2=", subject="Budget", text_body="Numbers attached."),
-    ])
+    inbox = _Query(
+        [
+            _msg(
+                "RAW-1=",
+                subject="RFP timeline",
+                text_body="Confirming the new deadline works." + QUOTED_TAIL,
+            ),
+            _msg("RAW-2=", subject="Budget", text_body="Numbers attached."),
+        ]
+    )
     ctx = _ctx(tmp_path, _account(inbox=inbox))
     res = _run(ctx, "search_messages")
     assert res["ok"] is True
@@ -171,8 +192,15 @@ def test_search_aqs_passes_query_string_to_filter(tmp_path):
 def test_search_structured_filters_become_lookups(tmp_path):
     inbox = _Query([_msg("RAW-1=")])
     ctx = _ctx(tmp_path, _account(inbox=inbox))
-    res = _run(ctx, "search_messages", subject="rfp", since="2026-06-01",
-               until="2026-06-12T18:30+03:00", is_unread=True, has_attachments=True)
+    res = _run(
+        ctx,
+        "search_messages",
+        subject="rfp",
+        since="2026-06-01",
+        until="2026-06-12T18:30+03:00",
+        is_unread=True,
+        has_attachments=True,
+    )
     assert res["ok"] is True
     args, kwargs = inbox.filter_calls[0]
     assert args == ()
@@ -185,10 +213,12 @@ def test_search_structured_filters_become_lookups(tmp_path):
 
 
 def test_search_from_is_a_client_side_postfilter(tmp_path):
-    inbox = _Query([
-        _msg("RAW-1=", sender="ahmed@corp.example"),
-        _msg("RAW-2=", sender="sara@corp.example"),
-    ])
+    inbox = _Query(
+        [
+            _msg("RAW-1=", sender="ahmed@corp.example"),
+            _msg("RAW-2=", sender="sara@corp.example"),
+        ]
+    )
     ctx = _ctx(tmp_path, _account(inbox=inbox))
     res = _run(ctx, "search_messages", from_="ahmed")
     assert res["ok"] is True
@@ -230,10 +260,12 @@ def test_search_filtered_has_lookahead_next_offset_but_no_total(tmp_path):
 
 
 def test_search_sender_param_and_deprecated_alias(tmp_path):
-    inbox = _Query([
-        _msg("RAW-1=", sender="ahmed@corp.example"),
-        _msg("RAW-2=", sender="sara@corp.example"),
-    ])
+    inbox = _Query(
+        [
+            _msg("RAW-1=", sender="ahmed@corp.example"),
+            _msg("RAW-2=", sender="sara@corp.example"),
+        ]
+    )
     ctx = _ctx(tmp_path, _account(inbox=inbox))
     res = _run(ctx, "search_messages", sender="ahmed")
     assert res["count"] == 1
@@ -245,10 +277,13 @@ def test_search_sender_param_and_deprecated_alias(tmp_path):
 
 
 def test_get_message_full_shape_and_alias_roundtrip(tmp_path):
-    item = _msg("RAW-1=", subject="RFP timeline",
-                text_body="Body line.\n\nRegards", has_attachments=True,
-                attachments=[SimpleNamespace(name="contract.pdf", size=9,
-                                             content_type="application/pdf")])
+    item = _msg(
+        "RAW-1=",
+        subject="RFP timeline",
+        text_body="Body line.\n\nRegards",
+        has_attachments=True,
+        attachments=[SimpleNamespace(name="contract.pdf", size=9, content_type="application/pdf")],
+    )
     inbox = _Query([item])
     account = _account(inbox=inbox)
     ctx = _ctx(tmp_path, account)
@@ -295,15 +330,28 @@ def test_get_message_stale_id_maps_to_not_found(tmp_path):
 
 
 def test_get_thread_merges_inbox_and_sent_chronologically(tmp_path):
-    msg_a = _msg("RAW-A=", subject="RFP", sender="ahmed@corp.example",
-                 dt=datetime(2026, 6, 10, 9, 0, tzinfo=TZ),
-                 text_body="Opening question?")
-    msg_b = _msg("RAW-B=", subject="Re: RFP", sender="exec@corp.example",
-                 dt=datetime(2026, 6, 10, 10, 0, tzinfo=TZ),
-                 text_body="Agreed, Sunday 10am." + QUOTED_TAIL)
-    msg_c = _msg("RAW-C=", subject="Re: RFP", sender="ahmed@corp.example",
-                 dt=datetime(2026, 6, 10, 11, 0, tzinfo=TZ),
-                 text_body="Confirmed, thanks.", has_attachments=True)
+    msg_a = _msg(
+        "RAW-A=",
+        subject="RFP",
+        sender="ahmed@corp.example",
+        dt=datetime(2026, 6, 10, 9, 0, tzinfo=TZ),
+        text_body="Opening question?",
+    )
+    msg_b = _msg(
+        "RAW-B=",
+        subject="Re: RFP",
+        sender="exec@corp.example",
+        dt=datetime(2026, 6, 10, 10, 0, tzinfo=TZ),
+        text_body="Agreed, Sunday 10am." + QUOTED_TAIL,
+    )
+    msg_c = _msg(
+        "RAW-C=",
+        subject="Re: RFP",
+        sender="ahmed@corp.example",
+        dt=datetime(2026, 6, 10, 11, 0, tzinfo=TZ),
+        text_body="Confirmed, thanks.",
+        has_attachments=True,
+    )
     account = _account(inbox=_Query([msg_c, msg_a]), sent=_Query([msg_b]))
     account.fetch = MagicMock(return_value=[msg_a])
     ctx = _ctx(tmp_path, account)
@@ -330,8 +378,7 @@ def test_get_thread_merges_inbox_and_sent_chronologically(tmp_path):
 
 def test_get_thread_caps_at_limit_keeping_latest(tmp_path):
     msgs = [
-        _msg(f"RAW-{n}=", dt=datetime(2026, 6, 10, 8 + n, 0, tzinfo=TZ),
-             text_body=f"entry {n}")
+        _msg(f"RAW-{n}=", dt=datetime(2026, 6, 10, 8 + n, 0, tzinfo=TZ), text_body=f"entry {n}")
         for n in range(4)
     ]
     account = _account(inbox=_Query(msgs), sent=_Query())
@@ -345,8 +392,7 @@ def test_get_thread_caps_at_limit_keeping_latest(tmp_path):
 
 def test_get_thread_offset_pages_older_history(tmp_path):
     msgs = [
-        _msg(f"RAW-{n}=", dt=datetime(2026, 6, 10, 8 + n, 0, tzinfo=TZ),
-             text_body=f"entry {n}")
+        _msg(f"RAW-{n}=", dt=datetime(2026, 6, 10, 8 + n, 0, tzinfo=TZ), text_body=f"entry {n}")
         for n in range(5)
     ]
     account = _account(inbox=_Query(msgs), sent=_Query())
@@ -366,8 +412,7 @@ def test_get_thread_offset_pages_older_history(tmp_path):
 
 
 def _att(name="notes.txt", content=b"hello world", content_type="text/plain"):
-    return SimpleNamespace(name=name, size=len(content),
-                           content_type=content_type, content=content)
+    return SimpleNamespace(name=name, size=len(content), content_type=content_type, content=content)
 
 
 def test_get_attachment_text_mode(tmp_path):
@@ -396,21 +441,22 @@ def test_get_attachment_multiple_without_selector_is_validation(tmp_path):
 
 
 def test_get_attachment_index_selector_string(tmp_path):
-    item = _msg("RAW-A=", attachments=[_att("a.txt", b"first"),
-                                       _att("b.txt", b"second")])
+    item = _msg("RAW-A=", attachments=[_att("a.txt", b"first"), _att("b.txt", b"second")])
     account = _account()
     account.fetch = MagicMock(return_value=[item])
     ctx = _ctx(tmp_path, account)
-    res = _run(ctx, "get_attachment", message_id="RAW-A=", attachment="1",
-               mode="text")
+    res = _run(ctx, "get_attachment", message_id="RAW-A=", attachment="1", mode="text")
     assert res["ok"] is True
     assert res["text"] == "second"
 
 
 def test_get_attachment_auto_on_binary_returns_info_with_hint(tmp_path):
-    item = _msg("RAW-A=", attachments=[
-        _att("contract.pdf", b"%PDF-junk", "application/pdf"),
-    ])
+    item = _msg(
+        "RAW-A=",
+        attachments=[
+            _att("contract.pdf", b"%PDF-junk", "application/pdf"),
+        ],
+    )
     account = _account()
     account.fetch = MagicMock(return_value=[item])
     ctx = _ctx(tmp_path, account)
@@ -422,9 +468,12 @@ def test_get_attachment_auto_on_binary_returns_info_with_hint(tmp_path):
 
 
 def test_get_attachment_save_writes_sanitized_file(tmp_path):
-    item = _msg("RAW-A=", attachments=[
-        _att("quarterly report?.csv", b"a,b\n1,2\n", "text/csv"),
-    ])
+    item = _msg(
+        "RAW-A=",
+        attachments=[
+            _att("quarterly report?.csv", b"a,b\n1,2\n", "text/csv"),
+        ],
+    )
     account = _account()
     account.fetch = MagicMock(return_value=[item])
     ctx = _ctx(tmp_path, account)
@@ -441,15 +490,20 @@ def test_get_attachment_save_writes_sanitized_file(tmp_path):
 
 
 def test_overview_shape(tmp_path):
-    inbox = _Query([
-        _msg("RAW-1=", is_read=False, text_body="Urgent one."),
-        _msg("RAW-2=", is_read=False, text_body="Urgent two."),
-    ])
+    inbox = _Query(
+        [
+            _msg("RAW-1=", is_read=False, text_body="Urgent one."),
+            _msg("RAW-2=", is_read=False, text_body="Urgent two."),
+        ]
+    )
     inbox.unread_count = 2
     account = _account(inbox=inbox)
-    event = SimpleNamespace(id="EV-RAW-1=", subject="Standup",
-                            start=datetime(2026, 6, 13, 9, 0, tzinfo=TZ),
-                            end=datetime(2026, 6, 13, 9, 30, tzinfo=TZ))
+    event = SimpleNamespace(
+        id="EV-RAW-1=",
+        subject="Standup",
+        start=datetime(2026, 6, 13, 9, 0, tzinfo=TZ),
+        end=datetime(2026, 6, 13, 9, 30, tzinfo=TZ),
+    )
     account.calendar.view.return_value = [event]
     ctx = _ctx(tmp_path, account)
     res = _run(ctx, "get_mailbox_overview")
@@ -471,18 +525,17 @@ def test_overview_shape(tmp_path):
 
 
 def _folder(raw_id, name, total=1, unread=0, children=()):
-    return SimpleNamespace(id=raw_id, name=name, total_count=total,
-                           unread_count=unread, children=list(children))
+    return SimpleNamespace(
+        id=raw_id, name=name, total_count=total, unread_count=unread, children=list(children)
+    )
 
 
 def test_list_folders_walk_with_paths_and_wk(tmp_path):
     sub = _folder("FLD-SUB=", "2026", total=4)
-    inbox_folder = _folder("FLD-INBOX=", "Inbox", total=5, unread=2,
-                           children=[sub])
+    inbox_folder = _folder("FLD-INBOX=", "Inbox", total=5, unread=2, children=[sub])
     empty = _folder("FLD-EMPTY=", "Archive Old", total=0)
     account = _account()
-    account.msg_folder_root = _folder("FLD-ROOT=", "root",
-                                      children=[inbox_folder, empty])
+    account.msg_folder_root = _folder("FLD-ROOT=", "root", children=[inbox_folder, empty])
     account.inbox = inbox_folder  # lets the wk map identify f:inbox
     ctx = _ctx(tmp_path, account)
     res = _run(ctx, "list_folders")
@@ -503,8 +556,7 @@ def test_list_folders_depth_and_include_empty(tmp_path):
     inbox_folder = _folder("FLD-INBOX=", "Inbox", total=5, children=[sub])
     empty = _folder("FLD-EMPTY=", "Archive Old", total=0)
     account = _account()
-    account.msg_folder_root = _folder("FLD-ROOT=", "root",
-                                      children=[inbox_folder, empty])
+    account.msg_folder_root = _folder("FLD-ROOT=", "root", children=[inbox_folder, empty])
     ctx = _ctx(tmp_path, account)
     res = _run(ctx, "list_folders", depth=1, include_empty=False)
     assert [row["name"] for row in res["items"]] == ["Inbox"]

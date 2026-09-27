@@ -20,8 +20,7 @@ _spec.loader.exec_module(verifier)
 
 def _record(log: AuditLog, n: int) -> None:
     for i in range(n):
-        log.record(tool=f"t{i}", side_effect_class="read", outcome="ok",
-                   latency_ms=1)
+        log.record(tool=f"t{i}", side_effect_class="read", outcome="ok", latency_ms=1)
 
 
 def test_chain_continues_across_restarts(tmp_path):

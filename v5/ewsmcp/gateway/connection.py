@@ -83,14 +83,11 @@ class ConnectionManager:
                 "attempts": self._attempts,
                 "last_error": self._last_error,
                 "last_success_age_s": (
-                    int(now - self._last_success_ts)
-                    if self._last_success_ts is not None
-                    else None
+                    int(now - self._last_success_ts) if self._last_success_ts is not None else None
                 ),
                 "next_retry_in_s": (
                     max(0, int(self._next_retry_ts - now))
-                    if self._next_retry_ts is not None
-                    and self._state != STATE_WARM
+                    if self._next_retry_ts is not None and self._state != STATE_WARM
                     else None
                 ),
             }
@@ -164,9 +161,7 @@ class ConnectionManager:
     def _start_heartbeat(self) -> None:
         if self._heartbeat_seconds <= 0 or self._stopped:
             return
-        self._heartbeat_task = asyncio.create_task(
-            self._heartbeat_loop(), name="ews-heartbeat"
-        )
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop(), name="ews-heartbeat")
 
     async def _heartbeat_loop(self) -> None:
         while not self._stopped:
@@ -182,9 +177,7 @@ class ConnectionManager:
                 )
                 # Re-enter the warmup loop (which restarts the heartbeat on
                 # success). Exit this heartbeat; warmup owns recovery now.
-                self._task = asyncio.create_task(
-                    self._warmup_loop(), name="ews-warmup"
-                )
+                self._task = asyncio.create_task(self._warmup_loop(), name="ews-warmup")
                 return
 
     def _probe(self) -> bool:

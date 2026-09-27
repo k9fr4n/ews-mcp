@@ -47,11 +47,7 @@ AR_OUTLOOK = (
     "\n"
     "نص قديم.\n"
 )
-AR_OUTLOOK_KEPT = (
-    "وعليكم السلام،\n"
-    "\n"
-    "تم استلام التقرير وسنوافيكم بالملاحظات قبل نهاية الأسبوع."
-)
+AR_OUTLOOK_KEPT = "وعليكم السلام،\n\nتم استلام التقرير وسنوافيكم بالملاحظات قبل نهاية الأسبوع."
 
 GMAIL_EN = (
     "Sounds good — see you at 10.\n"
@@ -84,12 +80,7 @@ MIXED_AR_EN = (
     "\n"
     "Old content.\n"
 )
-MIXED_AR_EN_KEPT = (
-    "Dear Ahmed,\n"
-    "\n"
-    "نوافق على المقترح بصيغته الحالية.\n"
-    "We will sign tomorrow."
-)
+MIXED_AR_EN_KEPT = "Dear Ahmed,\n\nنوافق على المقترح بصيغته الحالية.\nWe will sign tomorrow."
 
 QUOTED_RUN = (
     "Thanks for the update.\n"
@@ -127,10 +118,7 @@ FROM_MIDPARA = (
     "We can proceed."
 )
 
-PLAIN = (
-    "Quick note — the dashboard refresh moved to 6 AM.\n"
-    "No action needed from your side."
-)
+PLAIN = "Quick note — the dashboard refresh moved to 6 AM.\nNo action needed from your side."
 
 SIG_EN = (
     "The contract is signed and archived.\n"
@@ -142,13 +130,7 @@ SIG_EN = (
 )
 SIG_EN_KEPT = "The contract is signed and archived.\nFinance has been notified."
 
-SIG_AR = (
-    "تم اعتماد المسودة النهائية.\n"
-    "سيتم الرفع للإدارة غداً صباحاً.\n"
-    "\n"
-    "تحياتي\n"
-    "عمر\n"
-)
+SIG_AR = "تم اعتماد المسودة النهائية.\nسيتم الرفع للإدارة غداً صباحاً.\n\nتحياتي\nعمر\n"
 SIG_AR_KEPT = "تم اعتماد المسودة النهائية.\nسيتم الرفع للإدارة غداً صباحاً."
 
 SIG_AR_FORMAL = (
@@ -161,14 +143,7 @@ SIG_AR_FORMAL = (
 )
 SIG_AR_FORMAL_KEPT = "نشكر لكم تعاونكم المستمر.\nتم رفع المحضر للاعتماد."
 
-SIG_DELIM = (
-    "Numbers confirmed.\n"
-    "Invoice goes out today.\n"
-    "\n"
-    "-- \n"
-    "Sara\n"
-    "Fabrikam Ltd\n"
-)
+SIG_DELIM = "Numbers confirmed.\nInvoice goes out today.\n\n-- \nSara\nFabrikam Ltd\n"
 SIG_DELIM_KEPT = "Numbers confirmed.\nInvoice goes out today."
 
 FULL_EMAIL = (
@@ -190,10 +165,7 @@ FULL_EMAIL = (
     "May we proceed?\n"
 )
 FULL_EMAIL_CLEAN = (
-    "Hi Sarah,\n"
-    "\n"
-    "Approved — please proceed with phase two.\n"
-    "Loop in finance on the PO."
+    "Hi Sarah,\n\nApproved — please proceed with phase two.\nLoop in finance on the PO."
 )
 
 TRUNC_SUFFIX = "… [truncated]"
@@ -214,6 +186,7 @@ HTML_DOC = (
 # ---------------------------------------------------------------------------
 # strip_quoted_history
 # ---------------------------------------------------------------------------
+
 
 def test_outlook_en_chain_cut_at_from_sent_pair():
     assert strip_quoted_history(EN_OUTLOOK) == (EN_OUTLOOK_KEPT, 1)
@@ -260,13 +233,7 @@ def test_plain_body_unchanged_count_zero():
 
 
 def test_original_message_may_cut_even_on_first_line():
-    text = (
-        "-----Original Message-----\n"
-        "From: X <x@y.example>\n"
-        "Sent: Monday\n"
-        "\n"
-        "Old."
-    )
+    text = "-----Original Message-----\nFrom: X <x@y.example>\nSent: Monday\n\nOld."
     assert strip_quoted_history(text) == ("", 2)
 
 
@@ -278,6 +245,7 @@ def test_strip_quoted_history_empty_inputs():
 # ---------------------------------------------------------------------------
 # strip_signature
 # ---------------------------------------------------------------------------
+
 
 def test_signature_en_closer_block_stripped():
     assert strip_signature(SIG_EN) == SIG_EN_KEPT
@@ -307,11 +275,7 @@ def test_signature_not_stripped_when_body_too_short():
 
 def test_closer_like_sentence_in_body_not_stripped():
     # "Thanks," followed by real prose must not be treated as a closer.
-    text = (
-        "Hi team\n"
-        "The report is ready for review.\n"
-        "Thanks, that works for me as well."
-    )
+    text = "Hi team\nThe report is ready for review.\nThanks, that works for me as well."
     assert strip_signature(text) == text
 
 
@@ -323,6 +287,7 @@ def test_strip_signature_empty_inputs():
 # ---------------------------------------------------------------------------
 # clean_body pipeline
 # ---------------------------------------------------------------------------
+
 
 def test_clean_body_full_email_quote_and_signature():
     assert clean_body(FULL_EMAIL) == {
@@ -380,6 +345,7 @@ def test_clean_body_empty_and_none():
 # ---------------------------------------------------------------------------
 # html_to_text
 # ---------------------------------------------------------------------------
+
 
 def test_html_to_text_table_links_and_arabic():
     out = html_to_text(HTML_DOC)

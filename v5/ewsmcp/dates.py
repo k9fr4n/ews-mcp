@@ -21,7 +21,8 @@ def parse_when(value, field: str, tz_name: str) -> datetime:
     tz = ZoneInfo(tz_name)
     if not isinstance(value, str) or not value.strip():
         raise ToolError(
-            "validation", f"{field!r} must be a non-empty date string.",
+            "validation",
+            f"{field!r} must be a non-empty date string.",
             hint=GRAMMAR_HINT,
         )
     v = value.strip()
@@ -35,7 +36,8 @@ def parse_when(value, field: str, tz_name: str) -> datetime:
         dt = datetime.fromisoformat(v)  # date-only parses to midnight
     except ValueError:
         raise ToolError(
-            "validation", f"{field!r}: cannot parse {value!r} as a date.",
+            "validation",
+            f"{field!r}: cannot parse {value!r} as a date.",
             hint=GRAMMAR_HINT,
         ) from None
     return dt if dt.tzinfo is not None else dt.replace(tzinfo=tz)

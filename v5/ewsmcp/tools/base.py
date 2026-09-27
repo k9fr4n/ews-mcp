@@ -21,9 +21,17 @@ from ..errors import ToolError, map_exception
 
 TIER_RANK = {"read": 0, "draft": 1, "full": 2}
 CLASS_TIER = {"read": "read", "write": "draft", "send": "full", "destructive": "full"}
-ID_KEYS = frozenset({
-    "id", "message_id", "draft_id", "event_id", "thread_id", "reply_to", "folder",
-})
+ID_KEYS = frozenset(
+    {
+        "id",
+        "message_id",
+        "draft_id",
+        "event_id",
+        "thread_id",
+        "reply_to",
+        "folder",
+    }
+)
 ID_LIST_KEYS = frozenset({"ids"})
 RECIPIENT_KEYS = ("to", "cc", "bcc", "attendees")
 
@@ -123,11 +131,13 @@ def _recipient_guard(ctx: Context, kwargs: Dict[str, Any]) -> None:
         return
     for r in _recipients(kwargs):
         if any(fnmatch.fnmatch(r, p) for p in deny):
-            raise ToolError("recipient_blocked",
-                            f"recipient '{r}' is denylisted (EWS_RECIPIENT_DENYLIST)")
+            raise ToolError(
+                "recipient_blocked", f"recipient '{r}' is denylisted (EWS_RECIPIENT_DENYLIST)"
+            )
         if allow and not any(fnmatch.fnmatch(r, p) for p in allow):
-            raise ToolError("recipient_blocked",
-                            f"recipient '{r}' is not allowlisted (EWS_RECIPIENT_ALLOWLIST)")
+            raise ToolError(
+                "recipient_blocked", f"recipient '{r}' is not allowlisted (EWS_RECIPIENT_ALLOWLIST)"
+            )
 
 
 def _rate_guard(ctx: Context) -> None:
@@ -140,31 +150,32 @@ def _rate_guard(ctx: Context) -> None:
             _SEND_TIMES.popleft()
         if len(_SEND_TIMES) >= cap:
             retry = int(3600 - (now - _SEND_TIMES[0]))
-            raise ToolError("rate_capped",
-                            f"send rate cap reached ({cap}/hour)",
-                            retry_after_s=retry)
+            raise ToolError(
+                "rate_capped", f"send rate cap reached ({cap}/hour)", retry_after_s=retry
+            )
         _SEND_TIMES.append(now)
 
 
 def _external_recipients(ctx: Context, source: Dict[str, Any]) -> List[str]:
     own = ctx.settings.ews_email.rsplit("@", 1)[-1].lower()
-    return sorted({
-        r for r in _recipients(source) if r.rsplit("@", 1)[-1] != own
-    })
+    return sorted({r for r in _recipients(source) if r.rsplit("@", 1)[-1] != own})
 
 
 _CONFIRM_HINTS = {
     "expired": "Token expired — call again WITHOUT confirm_token for a fresh preview.",
-    "stale": ("The content changed since the preview (or the arguments differ) — "
-              "re-preview to get a token bound to the current content."),
+    "stale": (
+        "The content changed since the preview (or the arguments differ) — "
+        "re-preview to get a token bound to the current content."
+    ),
     "consumed": "This token was already used once — re-preview for a fresh one.",
     "bad_signature": "Invalid confirmation token.",
     "malformed": "Malformed confirmation token.",
 }
 
 
-async def _confirm_gate(ctx: Context, spec: ToolSpec, kwargs: Dict[str, Any],
-                        token: Optional[str]) -> Optional[Dict[str, Any]]:
+async def _confirm_gate(
+    ctx: Context, spec: ToolSpec, kwargs: Dict[str, Any], token: Optional[str]
+) -> Optional[Dict[str, Any]]:
     """Returns the phase-1 response, or None when execution may proceed.
 
     With ``spec.preview`` the token binds the RESOLVED content (refetched and
@@ -185,15 +196,18 @@ async def _confirm_gate(ctx: Context, spec: ToolSpec, kwargs: Dict[str, Any],
             sorted(content.get("bcc") or []),
             body_text if isinstance(body_text, str) else "",
         )
-        target_id = str(kwargs.get("draft_id") or kwargs.get("event_id")
-                        or kwargs.get("id") or "-")
+        target_id = str(kwargs.get("draft_id") or kwargs.get("event_id") or kwargs.get("id") or "-")
     else:
         chash = content_hash(dict(kwargs))
         target_id = "-"
     if not token:
         tok = make_token(
-            mailbox=ctx.settings.ews_email, action=spec.name, target_id=target_id,
-            chash=chash, ttl_seconds=ctx.settings.confirm_ttl_seconds, secret=secret,
+            mailbox=ctx.settings.ews_email,
+            action=spec.name,
+            target_id=target_id,
+            chash=chash,
+            ttl_seconds=ctx.settings.confirm_ttl_seconds,
+            secret=secret,
         )
         if content is not None:
             preview = {k: v for k, v in content.items() if k != "body_text"}
@@ -209,8 +223,10 @@ async def _confirm_gate(ctx: Context, spec: ToolSpec, kwargs: Dict[str, Any],
         response: Dict[str, Any] = {
             "ok": True,
             "requires_confirmation": True,
-            "message": (f"{spec.name} previewed — NOTHING executed. Call again "
-                        "with the same arguments plus confirm_token to proceed."),
+            "message": (
+                f"{spec.name} previewed — NOTHING executed. Call again "
+                "with the same arguments plus confirm_token to proceed."
+            ),
             "preview": preview,
             **tok,
         }
@@ -218,8 +234,12 @@ async def _confirm_gate(ctx: Context, spec: ToolSpec, kwargs: Dict[str, Any],
             response["warnings"] = [f"external recipients: {', '.join(external)}"]
         return response
     ok, reason = verify_token(
-        token, mailbox=ctx.settings.ews_email, action=spec.name,
-        target_id=target_id, chash=chash, secret=secret,
+        token,
+        mailbox=ctx.settings.ews_email,
+        action=spec.name,
+        target_id=target_id,
+        chash=chash,
+        secret=secret,
     )
     if ok and not consume_token(token):
         ok, reason = False, "consumed"
@@ -228,8 +248,8 @@ async def _confirm_gate(ctx: Context, spec: ToolSpec, kwargs: Dict[str, Any],
             "confirm_invalid",
             f"confirm_token rejected ({reason})",
             hint=_CONFIRM_HINTS.get(
-                reason,
-                f"Call {spec.name} again WITHOUT confirm_token for a fresh preview."),
+                reason, f"Call {spec.name} again WITHOUT confirm_token for a fresh preview."
+            ),
         )
     return None
 
@@ -250,13 +270,14 @@ async def mint_token(ctx: Context, spec: ToolSpec, kwargs: Dict[str, Any]) -> st
             sorted(content.get("bcc") or []),
             body_text if isinstance(body_text, str) else "",
         )
-        target_id = str(kwargs.get("draft_id") or kwargs.get("event_id")
-                        or kwargs.get("id") or "-")
+        target_id = str(kwargs.get("draft_id") or kwargs.get("event_id") or kwargs.get("id") or "-")
     else:
         chash = content_hash(dict(kwargs))
         target_id = "-"
     return make_token(
-        mailbox=ctx.settings.ews_email, action=spec.name, target_id=target_id,
+        mailbox=ctx.settings.ews_email,
+        action=spec.name,
+        target_id=target_id,
         chash=chash,
         ttl_seconds=ctx.settings.confirm_ttl_seconds,
         secret=ctx.settings.send_confirm_secret,
@@ -270,15 +291,15 @@ def _resolve_ids(ctx: Context, kwargs: Dict[str, Any]) -> Dict[str, Any]:
             if key in ID_KEYS and isinstance(value, str) and key != "folder":
                 out[key] = ctx.aliaser.resolve(value)
             elif key in ID_LIST_KEYS and isinstance(value, list):
-                out[key] = [ctx.aliaser.resolve(v) if isinstance(v, str) else v
-                            for v in value]
+                out[key] = [ctx.aliaser.resolve(v) if isinstance(v, str) else v for v in value]
     except KeyError as e:
         raise ToolError("validation", str(e.args[0] if e.args else e))
     return out
 
 
-async def dispatch(ctx: Context, spec: ToolSpec, kwargs: Dict[str, Any],
-                   transport: str = "-") -> Dict[str, Any]:
+async def dispatch(
+    ctx: Context, spec: ToolSpec, kwargs: Dict[str, Any], transport: str = "-"
+) -> Dict[str, Any]:
     start = time.time()
     outcome = "ok"
     # confirm_token is dispatcher vocabulary, never a handler argument —
@@ -296,8 +317,7 @@ async def dispatch(ctx: Context, spec: ToolSpec, kwargs: Dict[str, Any],
             raise ToolError(
                 "kill_switch",
                 f"{spec.name} is blocked: SEND_ENABLED=false on this server.",
-                hint="Create a draft instead; sending requires the operator "
-                     "to flip SEND_ENABLED.",
+                hint="Create a draft instead; sending requires the operator to flip SEND_ENABLED.",
             )
         # Tier
         tier = ctx.settings.ews_capability_tier
@@ -354,7 +374,8 @@ async def dispatch(ctx: Context, spec: ToolSpec, kwargs: Dict[str, Any],
         # errors, not upstream failures — never report them as 502s.
         outcome = "validation"
         return ToolError(
-            "validation", f"{type(exc).__name__}: {exc}",
+            "validation",
+            f"{type(exc).__name__}: {exc}",
             hint="Check the argument names and types against the tool schema.",
         ).to_dict()
     except Exception as exc:
@@ -372,15 +393,19 @@ async def dispatch(ctx: Context, spec: ToolSpec, kwargs: Dict[str, Any],
             ctx.bump(f"err.{outcome}")
         detail = None
         if spec.side_effect_class in ("send", "destructive"):
-            detail = {k: kwargs.get(k)
-                      for k in ("to", "cc", "subject", "id", "ids",
-                                "draft_id", "event_id")
-                      if kwargs.get(k) is not None}
+            detail = {
+                k: kwargs.get(k)
+                for k in ("to", "cc", "subject", "id", "ids", "draft_id", "event_id")
+                if kwargs.get(k) is not None
+            }
         # Audit writes (file append + chain hash) run off the event loop —
         # one slow disk must not stall every concurrent request.
         await asyncio.to_thread(
             ctx.audit.record,
-            tool=spec.name, side_effect_class=spec.side_effect_class,
-            outcome=outcome, latency_ms=int((time.time() - start) * 1000),
-            transport=transport, detail=detail,
+            tool=spec.name,
+            side_effect_class=spec.side_effect_class,
+            outcome=outcome,
+            latency_ms=int((time.time() - start) * 1000),
+            transport=transport,
+            detail=detail,
         )

@@ -54,8 +54,9 @@ def credentials_from_headers(headers, base_settings) -> tuple[str, str, str, str
     email = one(b"x-ews-email", required=True)
     password = one(b"x-ews-password", required=True)
     username = one(b"x-ews-username", required=False) or email
-    endpoint = (one(b"x-ews-server-url", required=False)
-                or base_settings.ews_server_url).rstrip("/")
+    endpoint = (one(b"x-ews-server-url", required=False) or base_settings.ews_server_url).rstrip(
+        "/"
+    )
     allowed = {base_settings.ews_server_url.rstrip("/")}
     allowed.update(
         item.strip().rstrip("/")
@@ -81,7 +82,8 @@ class TenantContextPool:
         email, username, password, endpoint = credentials_from_headers(headers, self.settings)
         identity = json.dumps(
             [endpoint, email.casefold(), username, password],
-            ensure_ascii=False, separators=(",", ":"),
+            ensure_ascii=False,
+            separators=(",", ":"),
         )
         tenant_id = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:24]
         async with self._lock:
@@ -90,13 +92,15 @@ class TenantContextPool:
             entry = self._entries.get(tenant_id)
             if entry is None:
                 await self._make_room_locked()
-                tenant_settings = self.settings.model_copy(update={
-                    "ews_server_url": endpoint,
-                    "ews_email": email,
-                    "ews_username": username,
-                    "ews_password": password,
-                    "data_dir": str(Path(self.settings.data_dir) / "tenants" / tenant_id),
-                })
+                tenant_settings = self.settings.model_copy(
+                    update={
+                        "ews_server_url": endpoint,
+                        "ews_email": email,
+                        "ews_username": username,
+                        "ews_password": password,
+                        "data_dir": str(Path(self.settings.data_dir) / "tenants" / tenant_id),
+                    }
+                )
                 context = build_context(tenant_settings, tenant_id=tenant_id)
                 await start_connection_manager(context)
                 entry = {"context": context, "active": 0}
@@ -149,6 +153,7 @@ class TenantContextPool:
                 context.cache.close()
             if context.tenant_id:
                 from .ids import evict_aliaser
+
                 evict_aliaser(str(Path(context.settings.data_dir) / "memory"))
             pool = getattr(context.gateway, "_pool", None)
             if pool is not None:

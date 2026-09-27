@@ -67,11 +67,19 @@ def test_registry_counts_per_tier_and_semantic(tmp_path):
 
 def _tasks_store(tmp_path):
     store = CacheStore(tmp_path / "mirror.db")
-    store.upsert_tasks([
-        {"ews_id": "T1", "changekey": None, "subject": "File the report",
-         "due_ts": 100, "due_iso": "2026-07-15", "is_complete": 0,
-         "status": "NotStarted"},
-    ])
+    store.upsert_tasks(
+        [
+            {
+                "ews_id": "T1",
+                "changekey": None,
+                "subject": "File the report",
+                "due_ts": 100,
+                "due_iso": "2026-07-15",
+                "is_complete": 0,
+                "status": "NotStarted",
+            },
+        ]
+    )
     store.set_sync_state("item:tasks", "TOK", time.time())
     return store
 
@@ -136,10 +144,18 @@ def test_update_task_complete_and_due(tmp_path):
 def test_waiting_on_from_mirror(tmp_path):
     store = CacheStore(tmp_path / "mirror.db")
     now = int(time.time())
-    store.upsert_messages([
-        make_row("S1", conv="CW", folder="sent", date_ts=now - 6 * 86400,
-                 subject="Pending decision", to=["boss@corp.example"]),
-    ])
+    store.upsert_messages(
+        [
+            make_row(
+                "S1",
+                conv="CW",
+                folder="sent",
+                date_ts=now - 6 * 86400,
+                subject="Pending decision",
+                to=["boss@corp.example"],
+            ),
+        ]
+    )
     store.set_sync_state("item:sent", "TOK", now)
     ctx = _ctx(tmp_path, cache=store)
     res = _run(ctx, "waiting_on", days=5)
@@ -162,15 +178,20 @@ def test_waiting_on_requires_mirror(tmp_path):
 def test_get_contact_by_email_with_history(tmp_path):
     store = CacheStore(tmp_path / "mirror.db")
     now = int(time.time())
-    store.upsert_messages([
-        make_row("M1", sender_email="boss@corp.example", sender_name="Boss",
-                 date_ts=now - 100),
-    ])
+    store.upsert_messages(
+        [
+            make_row("M1", sender_email="boss@corp.example", sender_name="Boss", date_ts=now - 100),
+        ]
+    )
     mailbox = SimpleNamespace(name="Boss Person", email_address="boss@corp.example")
-    contact = SimpleNamespace(display_name="Boss Person", job_title="Director",
-                              company_name="Acme", phone_numbers=[])
-    account = SimpleNamespace(protocol=SimpleNamespace(
-        resolve_names=lambda names, return_full_contact_data: [(mailbox, contact)]))
+    contact = SimpleNamespace(
+        display_name="Boss Person", job_title="Director", company_name="Acme", phone_numbers=[]
+    )
+    account = SimpleNamespace(
+        protocol=SimpleNamespace(
+            resolve_names=lambda names, return_full_contact_data: [(mailbox, contact)]
+        )
+    )
     ctx = _ctx(tmp_path, Gateway(account), cache=store)
     res = _run(ctx, "get_contact", id="boss@corp.example")
     assert res["ok"] is True
@@ -182,8 +203,7 @@ def test_get_contact_by_email_with_history(tmp_path):
 
 def test_get_contact_mirror_fallback_when_gal_down(tmp_path):
     store = CacheStore(tmp_path / "mirror.db")
-    store.upsert_messages([
-        make_row("M1", sender_email="boss@corp.example", sender_name="Boss")])
+    store.upsert_messages([make_row("M1", sender_email="boss@corp.example", sender_name="Boss")])
 
     class DeadGateway:
         async def call(self, fn):
@@ -218,14 +238,13 @@ class FakeSemantic:
 def _sem_store(tmp_path):
     store = CacheStore(tmp_path / "mirror.db")
     now = int(time.time())
-    store.upsert_messages([
-        make_row("K1", subject="Vendor contract", body="terms agreed",
-                 date_ts=now - 300),
-        make_row("K2", subject="Vendor invoice", body="payment due",
-                 date_ts=now - 200),
-        make_row("K3", subject="Weekly report", body="numbers inside",
-                 date_ts=now - 100),
-    ])
+    store.upsert_messages(
+        [
+            make_row("K1", subject="Vendor contract", body="terms agreed", date_ts=now - 300),
+            make_row("K2", subject="Vendor invoice", body="payment due", date_ts=now - 200),
+            make_row("K3", subject="Weekly report", body="numbers inside", date_ts=now - 100),
+        ]
+    )
     store.set_sync_state("item:inbox", "TOK", now)
     return store
 
@@ -244,8 +263,7 @@ def test_semantic_mode_fuses_fts_and_vector_ranks(tmp_path):
 
 
 def test_semantic_outage_degrades_to_keyword(tmp_path):
-    ctx = _ctx(tmp_path, cache=_sem_store(tmp_path),
-               semantic=FakeSemantic(fail=True))
+    ctx = _ctx(tmp_path, cache=_sem_store(tmp_path), semantic=FakeSemantic(fail=True))
     res = _run(ctx, "search_messages", query="vendor", mode="semantic")
     assert res["ok"] is True
     assert "degraded" in res
@@ -279,9 +297,15 @@ def test_signature_learned_after_min_hits(tmp_path):
     store = CacheStore(tmp_path / "mirror.db")
     sig = "Best regards\nBoss Person\nDirector, Acme"
     for i in range(SIG_MIN_HITS):
-        store.upsert_messages([make_row(
-            f"S{i}", sender_email="boss@corp.example",
-            body=f"Message number {i} content.\n\n{sig}")])
+        store.upsert_messages(
+            [
+                make_row(
+                    f"S{i}",
+                    sender_email="boss@corp.example",
+                    body=f"Message number {i} content.\n\n{sig}",
+                )
+            ]
+        )
     body = f"Fresh content here.\n\n{sig}"
     stripped = store.strip_learned_signature("boss@corp.example", body)
     assert stripped == "Fresh content here."
@@ -311,10 +335,10 @@ def test_metrics_exposition(tmp_path):
     async def send(message):
         sent.append(message)
 
-    asyncio.run(app({"type": "http", "path": "/metrics", "method": "GET",
-                     "headers": []}, receive, send))
-    body = b"".join(m.get("body", b"") for m in sent
-                    if m["type"] == "http.response.body").decode()
+    asyncio.run(
+        app({"type": "http", "path": "/metrics", "method": "GET", "headers": []}, receive, send)
+    )
+    body = b"".join(m.get("body", b"") for m in sent if m["type"] == "http.response.body").decode()
     assert 'ewsmcp_tool_calls_total{tool="search_messages"} 4' in body
     assert 'ewsmcp_errors_total{code="validation"} 1' in body
     assert 'ewsmcp_cache_rows{table="messages"} 3' in body

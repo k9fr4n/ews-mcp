@@ -9,8 +9,7 @@ from . import mail_read, calendar_people, tasks, writes
 
 
 def build_registry(ctx: Context) -> Dict[str, ToolSpec]:
-    specs = [*mail_read.TOOLS, *calendar_people.TOOLS, *tasks.TOOLS,
-             *writes.TOOLS]
+    specs = [*mail_read.TOOLS, *calendar_people.TOOLS, *tasks.TOOLS, *writes.TOOLS]
     if getattr(ctx, "semantic", None) is not None:
         specs.extend(mail_read.SEMANTIC_TOOLS)
     tier = ctx.settings.ews_capability_tier

@@ -8,6 +8,7 @@ accounts at __init__; everything fetched from the fake account is a plain
 mock. Constants (SEND_TO_NONE, …) are the REAL exchangelib 5.0.3 objects so
 drift would fail here first.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -59,9 +60,11 @@ def make_account():
     account.calendar = SimpleNamespace(id="FOLDER-CAL")
     account._by_id = {}
     account.fetch_projections = []
+
     def fetch(pairs, only_fields=None):
         account.fetch_projections.append(only_fields)
         return [account._by_id[i] for i, _ in pairs]
+
     account.fetch = fetch
     return account
 
@@ -81,8 +84,7 @@ def call(ctx: Context, name: str, kwargs: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def full_ctx(tmp_path, account, **overrides) -> Context:
-    return make_ctx(tmp_path, account, send_enabled=True,
-                    ews_capability_tier="full", **overrides)
+    return make_ctx(tmp_path, account, send_enabled=True, ews_capability_tier="full", **overrides)
 
 
 class FakeDraftMessage:
@@ -134,14 +136,26 @@ def test_pack_surface_classes_and_confirm_declarations():
     assert len(writes.TOOLS) == 12
     classes = {s.name: s.side_effect_class for s in writes.TOOLS}
     assert classes == {
-        "create_draft": "write", "update_draft": "write", "delete_draft": "write",
-        "update_messages": "write", "move_messages": "write",
-        "create_event": "write", "update_event": "write",
-        "send_draft": "send", "respond_to_event": "send", "set_oof": "send",
-        "cancel_event": "destructive", "delete_messages": "destructive",
+        "create_draft": "write",
+        "update_draft": "write",
+        "delete_draft": "write",
+        "update_messages": "write",
+        "move_messages": "write",
+        "create_event": "write",
+        "update_event": "write",
+        "send_draft": "send",
+        "respond_to_event": "send",
+        "set_oof": "send",
+        "cancel_event": "destructive",
+        "delete_messages": "destructive",
     }
-    for name in ("create_draft", "update_draft", "delete_draft",
-                 "update_messages", "move_messages"):
+    for name in (
+        "create_draft",
+        "update_draft",
+        "delete_draft",
+        "update_messages",
+        "move_messages",
+    ):
         assert SPEC[name].confirm is False
     for name in ("respond_to_event", "cancel_event", "set_oof"):
         assert SPEC[name].confirm is True
@@ -163,8 +177,7 @@ def test_create_draft_new_saves_into_drafts(tmp_path, monkeypatch):
     account = make_account()
     ctx = make_ctx(tmp_path, account)
     monkeypatch.setattr(writes, "Message", FakeDraftMessage)
-    res = call(ctx, "create_draft",
-               {"to": ["a@x.com"], "subject": "Hi", "body": "Hello\n\nWorld"})
+    res = call(ctx, "create_draft", {"to": ["a@x.com"], "subject": "Hi", "body": "Hello\n\nWorld"})
     assert res["ok"] is True
     assert res["draft_id"].startswith("d")
     assert res["folder"] == "f:drafts"
@@ -220,8 +233,7 @@ def test_update_draft_saves_with_recipient_field_names(tmp_path):
     draft = MagicMock()
     draft.cc_recipients = None
     account._by_id["RAW-D1"] = draft
-    res = call(ctx, "update_draft",
-               {"draft_id": "RAW-D1", "to": ["a@b.c"], "subject": "S2"})
+    res = call(ctx, "update_draft", {"draft_id": "RAW-D1", "to": ["a@b.c"], "subject": "S2"})
     assert res["ok"] is True
     assert draft.to_recipients == ["a@b.c"]
     assert draft.subject == "S2"
@@ -258,8 +270,7 @@ def test_update_messages_isolates_per_item_failures(tmp_path):
     good1, bad, good2 = MagicMock(), MagicMock(), MagicMock()
     bad.save.side_effect = RuntimeError("boom")
     account._by_id.update({"RAW-1": good1, "RAW-2": bad, "RAW-3": good2})
-    res = call(ctx, "update_messages",
-               {"ids": ["RAW-1", "RAW-2", "RAW-3"], "set_read": True})
+    res = call(ctx, "update_messages", {"ids": ["RAW-1", "RAW-2", "RAW-3"], "set_read": True})
     assert res["ok"] is True
     assert res["updated"] == 2
     assert len(res["failed"]) == 1 and "boom" in res["failed"][0]["error"]
@@ -317,8 +328,7 @@ def test_send_draft_two_phase_through_dispatcher(tmp_path):
     assert p1["requires_confirmation"] is True and p1["confirm_token"]
     draft.send.assert_not_called()  # phase 1 executes NOTHING
 
-    p2 = call(ctx, "send_draft",
-              {"draft_id": "RAW-D5", "confirm_token": p1["confirm_token"]})
+    p2 = call(ctx, "send_draft", {"draft_id": "RAW-D5", "confirm_token": p1["confirm_token"]})
     assert p2["ok"] is True and p2["sent"] is True
     assert p2["internet_message_id"] == "<imid-1@corp.example>"
     draft.send.assert_called_once_with(save_copy=True)
@@ -349,16 +359,14 @@ def test_send_draft_idempotency_replay_and_key_reuse(tmp_path):
 
 
 def test_send_draft_kill_switch_refuses_at_phase_one(tmp_path):
-    ctx = make_ctx(tmp_path, make_account(),
-                   send_enabled=False, ews_capability_tier="full")
+    ctx = make_ctx(tmp_path, make_account(), send_enabled=False, ews_capability_tier="full")
     res = call(ctx, "send_draft", {"draft_id": "RAW-D5"})
     assert res["ok"] is False and res["error"]["code"] == "kill_switch"
     assert "confirm_token" not in res  # not even a preview token is minted
 
 
 def test_send_draft_tier_blocked_on_draft_tier(tmp_path):
-    ctx = make_ctx(tmp_path, make_account(),
-                   send_enabled=True, ews_capability_tier="draft")
+    ctx = make_ctx(tmp_path, make_account(), send_enabled=True, ews_capability_tier="draft")
     res = call(ctx, "send_draft", {"draft_id": "RAW-D5"})
     assert res["error"]["code"] == "tier_blocked"
 
@@ -366,8 +374,9 @@ def test_send_draft_tier_blocked_on_draft_tier(tmp_path):
 # --- send_draft: content binding (the v3.5 port; TOCTOU + resolved guards) ------
 
 
-def make_content_draft(subject="Q3 numbers", to=("board@corp.example",),
-                       body="please review before Sunday"):
+def make_content_draft(
+    subject="Q3 numbers", to=("board@corp.example",), body="please review before Sunday"
+):
     draft = MagicMock()
     draft.parent_folder_id = SimpleNamespace(id=DRAFTS_ID)
     draft.message_id = "<imid-2@corp.example>"
@@ -384,8 +393,7 @@ def make_content_draft(subject="Q3 numbers", to=("board@corp.example",),
 def test_send_draft_phase1_previews_the_drafts_real_content(tmp_path):
     account = make_account()
     ctx = full_ctx(tmp_path, account)
-    account._by_id["RAW-D7"] = make_content_draft(
-        to=("board@corp.example", "cfo@external.example"))
+    account._by_id["RAW-D7"] = make_content_draft(to=("board@corp.example", "cfo@external.example"))
     p1 = call(ctx, "send_draft", {"draft_id": "RAW-D7"})
     assert p1["requires_confirmation"] is True
     assert p1["preview"]["subject"] == "Q3 numbers"
@@ -425,8 +433,7 @@ def test_send_draft_body_edit_also_invalidates_token(tmp_path):
 def test_send_draft_guard_blocks_denylisted_draft_recipient(tmp_path):
     """kwargs carry no recipients — the guard must fire on the DRAFT's."""
     account = make_account()
-    ctx = full_ctx(tmp_path, account,
-                   ews_recipient_denylist="*@competitor.example")
+    ctx = full_ctx(tmp_path, account, ews_recipient_denylist="*@competitor.example")
     account._by_id["RAW-DA"] = make_content_draft(to=("ceo@competitor.example",))
     p1 = call(ctx, "send_draft", {"draft_id": "RAW-DA"})
     assert p1["error"]["code"] == "recipient_blocked"
@@ -435,8 +442,7 @@ def test_send_draft_guard_blocks_denylisted_draft_recipient(tmp_path):
 
 def test_send_draft_allowlist_enforced_on_resolved_recipients(tmp_path):
     account = make_account()
-    ctx = full_ctx(tmp_path, account,
-                   ews_recipient_allowlist="*@corp.example")
+    ctx = full_ctx(tmp_path, account, ews_recipient_allowlist="*@corp.example")
     account._by_id["RAW-DB"] = make_content_draft(to=("out@other.example",))
     p1 = call(ctx, "send_draft", {"draft_id": "RAW-DB"})
     assert p1["error"]["code"] == "recipient_blocked"
@@ -473,11 +479,9 @@ def test_idempotency_store_ttl_and_cap(monkeypatch):
 def test_create_draft_recipients_are_guarded(tmp_path, monkeypatch):
     """Write-class argument-borne recipients hit the guard (old dead code)."""
     account = make_account()
-    ctx = make_ctx(tmp_path, account,
-                   ews_recipient_denylist="*@competitor.example")
+    ctx = make_ctx(tmp_path, account, ews_recipient_denylist="*@competitor.example")
     monkeypatch.setattr(writes, "Message", FakeDraftMessage)
-    res = call(ctx, "create_draft",
-               {"to": ["ceo@competitor.example"], "body": "hi"})
+    res = call(ctx, "create_draft", {"to": ["ceo@competitor.example"], "body": "hi"})
     assert res["error"]["code"] == "recipient_blocked"
 
 
@@ -488,8 +492,9 @@ def test_create_event_default_saves_without_invites_no_confirm(tmp_path, monkeyp
     account = make_account()
     ctx = make_ctx(tmp_path, account)  # draft tier suffices for write class
     monkeypatch.setattr(writes, "CalendarItem", FakeCalendarItem)
-    res = call(ctx, "create_event",
-               {"subject": "Sync", "start": "2026-07-01", "end": "2026-07-01T01:00"})
+    res = call(
+        ctx, "create_event", {"subject": "Sync", "start": "2026-07-01", "end": "2026-07-01T01:00"}
+    )
     assert res["ok"] is True
     assert "requires_confirmation" not in res  # confirm only fires on invites
     assert res["event_id"].startswith("e")
@@ -503,15 +508,18 @@ def test_create_event_default_saves_without_invites_no_confirm(tmp_path, monkeyp
     assert ctx.aliaser.resolve(res["event_id"]) == "RAW-NEW-EVENT"
 
 
-def test_create_event_with_invites_blocked_by_kill_switch_at_phase_two(
-        tmp_path, monkeypatch):
+def test_create_event_with_invites_blocked_by_kill_switch_at_phase_two(tmp_path, monkeypatch):
     account = make_account()
     ctx = make_ctx(tmp_path, account)  # send_enabled defaults to False
     monkeypatch.setattr(writes, "CalendarItem", FakeCalendarItem)
     FakeCalendarItem.last = None
-    kwargs = {"subject": "Board", "start": "2026-07-01T10:00",
-              "end": "2026-07-01T11:00", "attendees": ["x@ext.example"],
-              "send_invitations": True}
+    kwargs = {
+        "subject": "Board",
+        "start": "2026-07-01T10:00",
+        "end": "2026-07-01T11:00",
+        "attendees": ["x@ext.example"],
+        "send_invitations": True,
+    }
     p1 = call(ctx, "create_event", kwargs)
     assert p1["requires_confirmation"] is True  # preview-only mode still works
     p2 = call(ctx, "create_event", {**kwargs, "confirm_token": p1["confirm_token"]})
@@ -523,9 +531,13 @@ def test_create_event_with_invites_sends_when_enabled(tmp_path, monkeypatch):
     account = make_account()
     ctx = make_ctx(tmp_path, account, send_enabled=True)
     monkeypatch.setattr(writes, "CalendarItem", FakeCalendarItem)
-    kwargs = {"subject": "Board", "start": "2026-07-01T10:00",
-              "end": "2026-07-01T11:00", "attendees": ["x@corp.example"],
-              "send_invitations": True}
+    kwargs = {
+        "subject": "Board",
+        "start": "2026-07-01T10:00",
+        "end": "2026-07-01T11:00",
+        "attendees": ["x@corp.example"],
+        "send_invitations": True,
+    }
     p1 = call(ctx, "create_event", kwargs)
     p2 = call(ctx, "create_event", {**kwargs, "confirm_token": p1["confirm_token"]})
     assert p2["ok"] is True and p2["invitations_sent"] is True
@@ -542,8 +554,9 @@ def test_update_event_silent_edit_uses_send_to_none(tmp_path):
     res = call(ctx, "update_event", {"event_id": "RAW-E2", "subject": "New title"})
     assert res["ok"] is True and res["updated_fields"] == ["subject"]
     assert ev.subject == "New title"
-    ev.save.assert_called_once_with(update_fields=["subject"],
-                                    send_meeting_invitations=SEND_TO_NONE)
+    ev.save.assert_called_once_with(
+        update_fields=["subject"], send_meeting_invitations=SEND_TO_NONE
+    )
 
 
 def test_update_event_notify_blocked_by_kill_switch(tmp_path):

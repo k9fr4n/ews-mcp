@@ -33,9 +33,19 @@ logger = logging.getLogger(__name__)
 # Fields pulled per synced message — everything a card/full DTO needs,
 # never the MIME. Cleaning happens here, once, at sync time.
 ITEM_FIELDS = [
-    "id", "changekey", "subject", "sender", "datetime_received", "is_read",
-    "has_attachments", "importance", "categories", "conversation_id",
-    "message_id", "to_recipients", "text_body",
+    "id",
+    "changekey",
+    "subject",
+    "sender",
+    "datetime_received",
+    "is_read",
+    "has_attachments",
+    "importance",
+    "categories",
+    "conversation_id",
+    "message_id",
+    "to_recipients",
+    "text_body",
 ]
 TASK_FIELDS = ["id", "changekey", "subject", "due_date", "is_complete", "status"]
 BODY_CLEAN_MAX = 20_000
@@ -85,12 +95,12 @@ def row_from_message(item: Any, folder_key: str, tz: str) -> Dict[str, Any]:
         "is_read": 1 if getattr(item, "is_read", True) else 0,
         "has_attachments": 1 if getattr(item, "has_attachments", False) else 0,
         "importance": str(getattr(item, "importance", "") or "") or None,
-        "categories_json": json.dumps(list(getattr(item, "categories", None) or []),
-                                      ensure_ascii=False),
+        "categories_json": json.dumps(
+            list(getattr(item, "categories", None) or []), ensure_ascii=False
+        ),
         "body_clean": body_clean,
         "internet_message_id": imid if isinstance(imid, str) else None,
-        "norm_text": CacheStore.norm_for_row(subject, sender_name,
-                                             sender_email, body_clean),
+        "norm_text": CacheStore.norm_for_row(subject, sender_name, sender_email, body_clean),
     }
 
 
@@ -106,8 +116,9 @@ def row_from_event(item: Any, tz: str) -> Dict[str, Any]:
         "end_iso": fmt_dt(getattr(item, "end", None), tz),
         "location": str(getattr(item, "location", None) or "") or None,
         "organizer": getattr(organizer, "email_address", None),
-        "is_recurring": 1 if (getattr(item, "is_recurring", False)
-                              or getattr(item, "recurrence", None)) else 0,
+        "is_recurring": 1
+        if (getattr(item, "is_recurring", False) or getattr(item, "recurrence", None))
+        else 0,
         "my_response": str(getattr(item, "my_response_type", None) or "") or None,
     }
 
@@ -119,23 +130,22 @@ def row_from_task(item: Any, tz: str) -> Dict[str, Any]:
         "changekey": getattr(item, "changekey", None),
         "subject": getattr(item, "subject", "") or "",
         "due_ts": _ts(due),
-        "due_iso": fmt_dt(due, tz) if hasattr(due, "astimezone") else (
-            due.isoformat() if due is not None else None),
+        "due_iso": fmt_dt(due, tz)
+        if hasattr(due, "astimezone")
+        else (due.isoformat() if due is not None else None),
         "is_complete": 1 if getattr(item, "is_complete", False) else 0,
         "status": str(getattr(item, "status", None) or "") or None,
     }
 
 
 class SyncEngine:
-    def __init__(self, settings: Any, gateway: Any, store: CacheStore,
-                 semantic: Any = None):
+    def __init__(self, settings: Any, gateway: Any, store: CacheStore, semantic: Any = None):
         self.settings = settings
         self.gateway = gateway
         self.store = store
         self.semantic = semantic  # optional vector tier; failures degrade
         self.folder_keys = [
-            k.strip().lower()
-            for k in (settings.ews_cache_folders or "").split(",") if k.strip()
+            k.strip().lower() for k in (settings.ews_cache_folders or "").split(",") if k.strip()
         ]
         self.last_error: Optional[str] = None
         self.last_cycle_ts: Optional[float] = None
@@ -149,8 +159,11 @@ class SyncEngine:
     async def start(self) -> None:
         if self._task is None:
             self._task = asyncio.create_task(self._loop(), name="cache-sync")
-            logger.info("cache sync engine started (folders=%s, every %ss)",
-                        self.folder_keys, self.settings.ews_cache_sync_seconds)
+            logger.info(
+                "cache sync engine started (folders=%s, every %ss)",
+                self.folder_keys,
+                self.settings.ews_cache_sync_seconds,
+            )
 
     async def stop(self) -> None:
         self._stopped = True
@@ -164,8 +177,9 @@ class SyncEngine:
     def status(self) -> Dict[str, Any]:
         return {
             "cycles": self.cycles,
-            "last_cycle_age_s": (int(time.time() - self.last_cycle_ts)
-                                 if self.last_cycle_ts else None),
+            "last_cycle_age_s": (
+                int(time.time() - self.last_cycle_ts) if self.last_cycle_ts else None
+            ),
             "last_error": self.last_error,
         }
 
@@ -197,9 +211,8 @@ class SyncEngine:
     def _sync_mail_folders(self, account: Any) -> None:
         """Apply item deltas for each hot folder (runs on the EWS pool)."""
         tz = self.settings.ews_tz
-        window_floor = (
-            datetime.now(ZoneInfo(tz))
-            - timedelta(days=int(self.settings.ews_cache_window_days))
+        window_floor = datetime.now(ZoneInfo(tz)) - timedelta(
+            days=int(self.settings.ews_cache_window_days)
         )
         for key in self.folder_keys:
             folder = getattr(account, key, None)
@@ -210,7 +223,8 @@ class SyncEngine:
             deletes: List[str] = []
             read_flags: List[tuple] = []
             for change_type, payload in folder.sync_items(
-                sync_state=token, only_fields=ITEM_FIELDS,
+                sync_state=token,
+                only_fields=ITEM_FIELDS,
             ):
                 if change_type in ("create", "update"):
                     received = getattr(payload, "datetime_received", None)
@@ -227,15 +241,15 @@ class SyncEngine:
             self.store.delete_messages_by_id(deletes)
             for ews_id, is_read in read_flags:
                 self.store.set_read_flag([ews_id], is_read)
-            self.store.set_sync_state(f"item:{key}", folder.item_sync_state,
-                                      time.time())
+            self.store.set_sync_state(f"item:{key}", folder.item_sync_state, time.time())
             if self.semantic is not None and (upserts or deletes):
                 try:  # embeddings ride the sync, never gate it
-                    self.semantic.add([
-                        {"ews_id": r["ews_id"],
-                         "text": f"{r['subject']}\n{r['body_clean']}"}
-                        for r in upserts
-                    ])
+                    self.semantic.add(
+                        [
+                            {"ews_id": r["ews_id"], "text": f"{r['subject']}\n{r['body_clean']}"}
+                            for r in upserts
+                        ]
+                    )
                     self.semantic.delete(deletes)
                 except Exception as exc:
                     logger.warning("semantic indexing skipped this cycle: %s", exc)
@@ -260,15 +274,17 @@ class SyncEngine:
                 path = f"{prefix}/{name}" if prefix else name
                 raw_id = getattr(child, "id", None)
                 if raw_id:
-                    rows.append({
-                        "ews_id": str(raw_id),
-                        "name": name,
-                        "path": path,
-                        "wk": wk_by_raw.get(raw_id),
-                        "total": getattr(child, "total_count", None) or 0,
-                        "unread": getattr(child, "unread_count", None) or 0,
-                        "children": len(list(getattr(child, "children", None) or [])),
-                    })
+                    rows.append(
+                        {
+                            "ews_id": str(raw_id),
+                            "name": name,
+                            "path": path,
+                            "wk": wk_by_raw.get(raw_id),
+                            "total": getattr(child, "total_count", None) or 0,
+                            "unread": getattr(child, "unread_count", None) or 0,
+                            "children": len(list(getattr(child, "children", None) or [])),
+                        }
+                    )
                 walk(child, path)
 
         try:
@@ -282,14 +298,16 @@ class SyncEngine:
         try:
             now = datetime.now(ZoneInfo(tz))
             day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            events = list(account.calendar.view(
-                start=day_start,
-                end=day_start + timedelta(days=CALENDAR_WINDOW_DAYS),
-                max_items=CALENDAR_MAX_ITEMS,
-            ))
+            events = list(
+                account.calendar.view(
+                    start=day_start,
+                    end=day_start + timedelta(days=CALENDAR_WINDOW_DAYS),
+                    max_items=CALENDAR_MAX_ITEMS,
+                )
+            )
             self.store.replace_events(
-                [row_from_event(ev, tz) for ev in events
-                 if getattr(ev, "id", None)])
+                [row_from_event(ev, tz) for ev in events if getattr(ev, "id", None)]
+            )
             self.store.set_sync_state("events", None, time.time())
         except Exception as exc:
             logger.debug("calendar window sync failed: %s", exc)
@@ -302,7 +320,8 @@ class SyncEngine:
                 upserts: List[Dict[str, Any]] = []
                 deletes: List[str] = []
                 for change_type, payload in tasks_folder.sync_items(
-                    sync_state=token, only_fields=TASK_FIELDS,
+                    sync_state=token,
+                    only_fields=TASK_FIELDS,
                 ):
                     if change_type in ("create", "update"):
                         if getattr(payload, "id", None):
@@ -311,8 +330,6 @@ class SyncEngine:
                         deletes.append(str(payload.id))
                 self.store.upsert_tasks(upserts)
                 self.store.delete_tasks_by_id(deletes)
-                self.store.set_sync_state("item:tasks",
-                                          tasks_folder.item_sync_state,
-                                          time.time())
+                self.store.set_sync_state("item:tasks", tasks_folder.item_sync_state, time.time())
         except Exception as exc:
             logger.debug("tasks sync failed: %s", exc)

@@ -53,14 +53,20 @@ class _FakeGateway:
 
 def _msg(raw_id):
     return SimpleNamespace(
-        id=raw_id, subject="Subj",
+        id=raw_id,
+        subject="Subj",
         sender=SimpleNamespace(name="A", email_address="a@corp.example"),
         datetime_received=datetime(2026, 6, 10, 9, 0, tzinfo=TZ),
-        is_read=True, has_attachments=False, text_body="Body.",
+        is_read=True,
+        has_attachments=False,
+        text_body="Body.",
         message_id=f"<{raw_id}@corp.example>",
         conversation_id=SimpleNamespace(id="CONV-1"),
-        to_recipients=[], cc_recipients=[], attachments=[],
-        importance="Normal", body=None,
+        to_recipients=[],
+        cc_recipients=[],
+        attachments=[],
+        importance="Normal",
+        body=None,
     )
 
 
@@ -69,14 +75,16 @@ def _account():
     inbox = _Query([_msg("RAW-1"), _msg("RAW-2")])
     account.inbox = inbox
     account.sent = _Query()
-    folder = SimpleNamespace(id="FLD-1", name="Inbox", total_count=2,
-                             unread_count=1, children=[])
-    account.msg_folder_root = SimpleNamespace(id="FLD-ROOT", name="root",
-                                              total_count=0, unread_count=0,
-                                              children=[folder])
-    event = SimpleNamespace(id="EV-1", subject="Standup",
-                            start=datetime(2026, 6, 13, 9, 0, tzinfo=TZ),
-                            end=datetime(2026, 6, 13, 9, 30, tzinfo=TZ))
+    folder = SimpleNamespace(id="FLD-1", name="Inbox", total_count=2, unread_count=1, children=[])
+    account.msg_folder_root = SimpleNamespace(
+        id="FLD-ROOT", name="root", total_count=0, unread_count=0, children=[folder]
+    )
+    event = SimpleNamespace(
+        id="EV-1",
+        subject="Standup",
+        start=datetime(2026, 6, 13, 9, 0, tzinfo=TZ),
+        end=datetime(2026, 6, 13, 9, 30, tzinfo=TZ),
+    )
     account.calendar.view.return_value = [event]
     mailbox = SimpleNamespace(name="Ahmed", email_address="ahmed@corp.example")
     account.protocol.resolve_names.return_value = [(mailbox, None)]
@@ -115,8 +123,16 @@ def test_list_tool_ships_canonical_envelope(tmp_path, name):
     assert isinstance(result["items"], list)
     assert result["count"] == len(result["items"])
     # No sibling spellings — the exact v3 drift this contract kills.
-    for legacy in ("results", "total", "total_results", "total_count",
-                   "emails", "events", "folders", "people"):
+    for legacy in (
+        "results",
+        "total",
+        "total_results",
+        "total_count",
+        "emails",
+        "events",
+        "folders",
+        "people",
+    ):
         assert legacy not in result, f"{name} ships legacy key {legacy!r}"
 
 

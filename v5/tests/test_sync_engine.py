@@ -44,14 +44,18 @@ class FakeFolder:
         self.item_sync_state = new_token
 
 
-def _msg(raw_id, *, subject="Subj", body="Body text", dt=None, is_read=False,
-         conv="CONV-1"):
+def _msg(raw_id, *, subject="Subj", body="Body text", dt=None, is_read=False, conv="CONV-1"):
     return SimpleNamespace(
-        id=raw_id, changekey="CK", subject=subject,
+        id=raw_id,
+        changekey="CK",
+        subject=subject,
         sender=SimpleNamespace(name="Ahmed", email_address="ahmed@corp.example"),
         datetime_received=dt or NOW,
-        is_read=is_read, has_attachments=False, importance="Normal",
-        categories=None, conversation_id=SimpleNamespace(id=conv),
+        is_read=is_read,
+        has_attachments=False,
+        importance="Normal",
+        categories=None,
+        conversation_id=SimpleNamespace(id=conv),
         message_id=f"<{raw_id}@corp.example>",
         to_recipients=[SimpleNamespace(email_address="exec@corp.example")],
         text_body=body,
@@ -74,20 +78,26 @@ def _engine(tmp_path, account, **overrides):
 
 def test_cycle_applies_creates_updates_deletes_and_read_flags(tmp_path):
     account = _account()
-    account.inbox.queue([
-        ("create", _msg("M1", subject="First", is_read=False)),
-        ("create", _msg("M2", subject="Second")),
-    ], "TOK-1")
+    account.inbox.queue(
+        [
+            ("create", _msg("M1", subject="First", is_read=False)),
+            ("create", _msg("M2", subject="Second")),
+        ],
+        "TOK-1",
+    )
     engine, store = _engine(tmp_path, account)
     asyncio.run(engine._cycle())
     assert store.get_message("M1")["subject"] == "First"
     assert store.get_sync_state("item:inbox") == "TOK-1"
 
-    account.inbox.queue([
-        ("update", _msg("M1", subject="First (edited)")),
-        ("delete", SimpleNamespace(id="M2")),
-        ("read_flag_change", (SimpleNamespace(id="M1"), True)),
-    ], "TOK-2")
+    account.inbox.queue(
+        [
+            ("update", _msg("M1", subject="First (edited)")),
+            ("delete", SimpleNamespace(id="M2")),
+            ("read_flag_change", (SimpleNamespace(id="M1"), True)),
+        ],
+        "TOK-2",
+    )
     asyncio.run(engine._cycle())
     row = store.get_message("M1")
     assert row["subject"] == "First (edited)"
@@ -101,10 +111,13 @@ def test_cycle_applies_creates_updates_deletes_and_read_flags(tmp_path):
 def test_window_floor_skips_ancient_backfill(tmp_path):
     account = _account()
     ancient = NOW - timedelta(days=4000)
-    account.inbox.queue([
-        ("create", _msg("OLD", dt=ancient)),
-        ("create", _msg("NEW")),
-    ], "TOK-1")
+    account.inbox.queue(
+        [
+            ("create", _msg("OLD", dt=ancient)),
+            ("create", _msg("NEW")),
+        ],
+        "TOK-1",
+    )
     engine, store = _engine(tmp_path, account, ews_cache_window_days=365)
     asyncio.run(engine._cycle())
     assert store.get_message("OLD") is None
@@ -132,8 +145,10 @@ def test_cycle_failure_degrades_not_dies(tmp_path):
 
 
 def test_row_from_message_cleans_body_once(tmp_path):
-    quoted = ("Latest reply only.\n\nFrom: Someone <s@corp.example>\n"
-              "Sent: Monday\nTo: Exec\nSubject: Re: X\n\nOLD QUOTED TEXT")
+    quoted = (
+        "Latest reply only.\n\nFrom: Someone <s@corp.example>\n"
+        "Sent: Monday\nTo: Exec\nSubject: Re: X\n\nOLD QUOTED TEXT"
+    )
     row = row_from_message(_msg("M1", body=quoted), "inbox", "Asia/Riyadh")
     assert "OLD QUOTED" not in row["body_clean"]
     assert row["body_clean"].startswith("Latest reply only.")
@@ -145,8 +160,9 @@ def test_slow_lane_syncs_folders_calendar_tasks(tmp_path):
     account = _account()
 
     def folder_node(fid, name, children=(), total=0, unread=0):
-        return SimpleNamespace(id=fid, name=name, children=list(children),
-                               total_count=total, unread_count=unread)
+        return SimpleNamespace(
+            id=fid, name=name, children=list(children), total_count=total, unread_count=unread
+        )
 
     inbox_node = folder_node("F-IN", "Inbox", total=5, unread=2)
     account.msg_folder_root = folder_node("F-ROOT", "root", [inbox_node])
@@ -159,17 +175,38 @@ def test_slow_lane_syncs_folders_calendar_tasks(tmp_path):
 
         def view(self, *, start, end, max_items=None):
             self.calls.append((start, end, max_items))
-            return [SimpleNamespace(
-                id="EV1", changekey=None, subject="Standup",
-                start=NOW, end=NOW + timedelta(minutes=30),
-                location=None, organizer=None, is_recurring=False,
-                recurrence=None, my_response_type=None,
-            )]
+            return [
+                SimpleNamespace(
+                    id="EV1",
+                    changekey=None,
+                    subject="Standup",
+                    start=NOW,
+                    end=NOW + timedelta(minutes=30),
+                    location=None,
+                    organizer=None,
+                    is_recurring=False,
+                    recurrence=None,
+                    my_response_type=None,
+                )
+            ]
 
     account.calendar = CalendarStub()
-    account.tasks.queue([("create", SimpleNamespace(
-        id="T1", changekey=None, subject="File report",
-        due_date=None, is_complete=False, status="NotStarted"))], "TT-1")
+    account.tasks.queue(
+        [
+            (
+                "create",
+                SimpleNamespace(
+                    id="T1",
+                    changekey=None,
+                    subject="File report",
+                    due_date=None,
+                    is_complete=False,
+                    status="NotStarted",
+                ),
+            )
+        ],
+        "TT-1",
+    )
 
     engine, store = _engine(tmp_path, account)
     engine._sync_slow_lane(account)

@@ -54,8 +54,16 @@ def main() -> int:
     steps = []
 
     def step(name, status, data, secs, size, ok):
-        steps.append((name, status, round(secs * 1000), size,
-                      data.get("source", "-"), "OK" if ok else "FAIL"))
+        steps.append(
+            (
+                name,
+                status,
+                round(secs * 1000),
+                size,
+                data.get("source", "-"),
+                "OK" if ok else "FAIL",
+            )
+        )
         if not ok:
             failures.append(f"{name}: {status} {json.dumps(data)[:300]}")
         return data
@@ -77,42 +85,51 @@ def main() -> int:
     # 2. the read journey (north-star call 1 + neighbors)
     s, d, t, n = _req(base, key, "POST", "/api/tools/get_mailbox_overview", {})
     step("overview", s, d, t, n, s == 200 and d.get("ok") is True)
-    s, d, t, n = _req(base, key, "POST", "/api/tools/search_messages",
-                      {"query": query, "limit": 3})
+    s, d, t, n = _req(base, key, "POST", "/api/tools/search_messages", {"query": query, "limit": 3})
     d = step(f"search '{query}'", s, d, t, n, s == 200 and d.get("ok") is True)
     first_id = (d.get("items") or [{}])[0].get("id")
     if first_id:
-        s, d, t, n = _req(base, key, "POST", "/api/tools/get_message",
-                          {"id": first_id, "format": "full"})
+        s, d, t, n = _req(
+            base, key, "POST", "/api/tools/get_message", {"id": first_id, "format": "full"}
+        )
         step("get_message", s, d, t, n, s == 200 and d.get("ok") is True)
-        s, d, t, n = _req(base, key, "POST", "/api/tools/get_thread",
-                          {"id": first_id})
+        s, d, t, n = _req(base, key, "POST", "/api/tools/get_thread", {"id": first_id})
         step("get_thread", s, d, t, n, s == 200 and d.get("ok") is True)
     else:
-        failures.append(f"search '{query}' returned no items — pick another "
-                        "SMOKE_QUERY")
-    s, d, t, n = _req(base, key, "POST", "/api/tools/list_events",
-                      {"start": "today", "end": "+7d"})
+        failures.append(f"search '{query}' returned no items — pick another SMOKE_QUERY")
+    s, d, t, n = _req(base, key, "POST", "/api/tools/list_events", {"start": "today", "end": "+7d"})
     step("list_events", s, d, t, n, s == 200 and d.get("ok") is True)
     if ar_query:
-        s, d, t, n = _req(base, key, "POST", "/api/tools/search_messages",
-                          {"query": ar_query, "limit": 3})
+        s, d, t, n = _req(
+            base, key, "POST", "/api/tools/search_messages", {"query": ar_query, "limit": 3}
+        )
         step("search AR", s, d, t, n, s == 200 and d.get("ok") is True)
-    s, d, t, n = _req(base, key, "POST", "/api/tools/check_availability", {
-        "attendees": [os.environ.get("SMOKE_SELF", "me@example.invalid")],
-        "start": "today", "end": "+2d"})
+    s, d, t, n = _req(
+        base,
+        key,
+        "POST",
+        "/api/tools/check_availability",
+        {
+            "attendees": [os.environ.get("SMOKE_SELF", "me@example.invalid")],
+            "start": "today",
+            "end": "+2d",
+        },
+    )
     step("availability", s, d, t, n, s in (200, 502))
 
     # 3. optional draft step (scenario A call 2) — draft only, never sends
     if write and first_id:
-        s, d, t, n = _req(base, key, "POST", "/api/tools/create_draft", {
-            "mode": "reply", "reply_to": first_id,
-            "body": "smoke-test draft — safe to delete"})
+        s, d, t, n = _req(
+            base,
+            key,
+            "POST",
+            "/api/tools/create_draft",
+            {"mode": "reply", "reply_to": first_id, "body": "smoke-test draft — safe to delete"},
+        )
         d = step("create_draft", s, d, t, n, s == 200 and d.get("ok") is True)
         draft_id = d.get("draft_id")
         if draft_id:
-            s, d, t, n = _req(base, key, "POST", "/api/tools/delete_draft",
-                              {"draft_id": draft_id})
+            s, d, t, n = _req(base, key, "POST", "/api/tools/delete_draft", {"draft_id": draft_id})
             step("delete_draft", s, d, t, n, s == 200)
 
     _print(steps, tools)

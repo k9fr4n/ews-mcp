@@ -27,20 +27,41 @@ from .bodyclean import _BIDI_RE
 # Tashkeel U+064B..U+0652 plus the superscript (dagger) alef U+0670.
 _DIACRITICS_RE = re.compile("[ً-ْٰ]")
 
-_FOLDS = str.maketrans({
-    "ـ": None,   # tatweel
-    "أ": "ا", "إ": "ا", "آ": "ا", "ٱ": "ا",   # alef variants
-    "ى": "ي",          # alef maqsura
-    "ة": "ه",          # teh marbuta
-    "ؤ": "و",          # hamza on waw
-    "ئ": "ي",          # hamza on yeh
-    # Arabic-Indic digits (U+0660-0669)
-    "٠": "0", "١": "1", "٢": "2", "٣": "3", "٤": "4",
-    "٥": "5", "٦": "6", "٧": "7", "٨": "8", "٩": "9",
-    # Extended Arabic-Indic digits (U+06F0-06F9)
-    "۰": "0", "۱": "1", "۲": "2", "۳": "3", "۴": "4",
-    "۵": "5", "۶": "6", "۷": "7", "۸": "8", "۹": "9",
-})
+_FOLDS = str.maketrans(
+    {
+        "ـ": None,  # tatweel
+        "أ": "ا",
+        "إ": "ا",
+        "آ": "ا",
+        "ٱ": "ا",  # alef variants
+        "ى": "ي",  # alef maqsura
+        "ة": "ه",  # teh marbuta
+        "ؤ": "و",  # hamza on waw
+        "ئ": "ي",  # hamza on yeh
+        # Arabic-Indic digits (U+0660-0669)
+        "٠": "0",
+        "١": "1",
+        "٢": "2",
+        "٣": "3",
+        "٤": "4",
+        "٥": "5",
+        "٦": "6",
+        "٧": "7",
+        "٨": "8",
+        "٩": "9",
+        # Extended Arabic-Indic digits (U+06F0-06F9)
+        "۰": "0",
+        "۱": "1",
+        "۲": "2",
+        "۳": "3",
+        "۴": "4",
+        "۵": "5",
+        "۶": "6",
+        "۷": "7",
+        "۸": "8",
+        "۹": "9",
+    }
+)
 
 
 def normalize_ar(text: str) -> str:

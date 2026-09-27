@@ -55,20 +55,23 @@ def map_exception(exc: Exception) -> ToolError:
     lowered = f"{name} {exc}".lower()
     if "errorserverbusy" in lowered or "back off" in lowered or "ratelimit" in lowered:
         return ToolError(
-            "throttled", text,
+            "throttled",
+            text,
             hint="Exchange asked us to slow down. Retry after the delay.",
             retry_after_s=60,
         )
     if "erroritemnotfound" in lowered or "errorinvalidid" in lowered:
         return ToolError(
-            "not_found", text,
+            "not_found",
+            text,
             hint="The item id is stale (items move). Re-run search_messages and use a fresh id.",
         )
     if "unauthorized" in lowered or "401" in lowered or "invalid credentials" in lowered:
         return ToolError("auth_failed", text, hint="Upstream Exchange rejected our credentials.")
     if any(k in lowered for k in ("connection", "timeout", "timed out", "transport", "auth type")):
         return ToolError(
-            "upstream_unavailable", text,
+            "upstream_unavailable",
+            text,
             hint="Exchange is unreachable or refusing fresh sessions; check /readyz.",
             retry_after_s=30,
         )

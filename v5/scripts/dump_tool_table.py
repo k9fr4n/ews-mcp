@@ -33,8 +33,7 @@ def _packs():
         ("calendar / people / status", calendar_people.TOOLS),
         ("tasks / waiting-on", tasks.TOOLS),
         ("writes", writes.TOOLS),
-        ("semantic (only when EWS_SEMANTIC_INDEX != none)",
-         mail_read.SEMANTIC_TOOLS),
+        ("semantic (only when EWS_SEMANTIC_INDEX != none)", mail_read.SEMANTIC_TOOLS),
     ]
 
 
@@ -89,10 +88,7 @@ def _schema_rows(schema) -> list:
             extras.append(f"default `{prop['default']}`")
         if extras:
             desc = (desc + " " if desc else "") + "(" + "; ".join(extras) + ")"
-        rows.append(
-            f"| `{name}` | {typ} "
-            f"| {'yes' if name in required else 'no'} | {desc} |"
-        )
+        rows.append(f"| `{name}` | {typ} | {'yes' if name in required else 'no'} | {desc} |")
     return rows
 
 
@@ -103,10 +99,7 @@ def build_details() -> str:
         lines.append("")
         for spec in specs:
             tier = CLASS_TIER.get(spec.side_effect_class, "draft")
-            lines.append(
-                f"#### `{spec.name}` — {spec.side_effect_class} "
-                f"(min tier: {tier})"
-            )
+            lines.append(f"#### `{spec.name}` — {spec.side_effect_class} (min tier: {tier})")
             lines.append("")
             lines.append(_md_cell(spec.description).replace("\\|", "|"))
             lines.append("")
@@ -114,13 +107,15 @@ def build_details() -> str:
                 lines.append(
                     "> Two-phase confirm for some argument combinations: the "
                     "first call returns a preview + `confirm_token`; repeat "
-                    "the call with the token to execute.")
+                    "the call with the token to execute."
+                )
                 lines.append("")
             elif spec.confirm:
                 lines.append(
                     "> Two-phase confirm: the first call returns a preview + "
                     "`confirm_token`; repeat the call with the token to "
-                    "execute.")
+                    "execute."
+                )
                 lines.append("")
             rows = _schema_rows(spec.input_schema)
             if rows:
@@ -152,8 +147,7 @@ def main() -> int:
     content = API_MD.read_text(encoding="utf-8")
     regenerated = _replace_block(content, START, END, table)
     if regenerated is not None:
-        regenerated = _replace_block(
-            regenerated, DETAILS_START, DETAILS_END, build_details())
+        regenerated = _replace_block(regenerated, DETAILS_START, DETAILS_END, build_details())
     if regenerated is None:
         print(f"generated-block markers missing in {API_MD}")
         return 2
@@ -163,8 +157,7 @@ def main() -> int:
         return 0
     if sys.argv[1] == "--check":
         if content != regenerated:
-            print("docs/API.md DRIFTED from the registry — "
-                  "run scripts/dump_tool_table.py --write")
+            print("docs/API.md DRIFTED from the registry — run scripts/dump_tool_table.py --write")
             return 1
         print("docs/API.md matches the registry")
         return 0

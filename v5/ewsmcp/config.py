@@ -92,8 +92,11 @@ class Settings(BaseSettings):
             raise ValueError("EWS_HTTP_HEADER_AUTH=true requires MCP_TRANSPORT=http")
         if self.mcp_transport == "http":
             loopback_hosts = {"127.0.0.1", "::1", "localhost"}
-            if (self.mcp_host not in loopback_hosts and not self.mcp_api_key
-                    and not self.mcp_http_allow_unauthenticated):
+            if (
+                self.mcp_host not in loopback_hosts
+                and not self.mcp_api_key
+                and not self.mcp_http_allow_unauthenticated
+            ):
                 raise ValueError(
                     "HTTP transport bound to a non-loopback address requires "
                     "MCP_API_KEY. Set MCP_HTTP_ALLOW_UNAUTHENTICATED=true only "

@@ -26,9 +26,7 @@ from html.parser import HTMLParser
 
 # Bidi / directionality control characters commonly injected by Outlook and
 # Gmail around Arabic text (LRM, RLM, embeddings, isolates, ALM, BOM).
-_BIDI_RE = re.compile(
-    "[\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069\\u061c\\ufeff]"
-)
+_BIDI_RE = re.compile("[\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069\\u061c\\ufeff]")
 
 # One or more leading '>' quote markers ("> ", ">> ", "> > " ...).
 _QUOTE_PREFIX_RE = re.compile(r"^(?:>\s?)+")
@@ -52,7 +50,7 @@ def _norm_line(line: str) -> tuple[str, bool]:
     m = _QUOTE_PREFIX_RE.match(s)
     quoted = m is not None
     if m:
-        s = s[m.end():].strip()
+        s = s[m.end() :].strip()
     return s, quoted
 
 
@@ -251,7 +249,7 @@ def strip_signature(text: str) -> str:
     for i in range(len(lines) - 1, -1, -1):
         if lines[i].rstrip() == "--":
             above = sum(1 for ln in lines[:i] if ln.strip())
-            below = sum(1 for ln in lines[i + 1:] if ln.strip())
+            below = sum(1 for ln in lines[i + 1 :] if ln.strip())
             if above >= 2 and below <= 10:
                 return "\n".join(lines[:i]).rstrip()
             break
@@ -320,8 +318,17 @@ def clean_body(text: str, max_chars: int = 4000) -> dict:
 # --------------------------------------------------------------------------
 
 _BLOCK_TAGS = {
-    "p", "div", "tr", "li", "table",
-    "h1", "h2", "h3", "h4", "h5", "h6",
+    "p",
+    "div",
+    "tr",
+    "li",
+    "table",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
 }
 _SKIP_TAGS = ("style", "script", "head")
 _MAX_HREF_SHOWN = 80

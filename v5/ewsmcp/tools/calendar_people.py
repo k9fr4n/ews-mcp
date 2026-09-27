@@ -34,16 +34,16 @@ GRID_MINUTES = 30  # free/busy slot granularity
 WORKING_HOURS = (dtime(9, 0), dtime(17, 0))
 MAX_WINDOW_DAYS = 366  # reject absurd windows like '+9999d' before EWS does
 MAX_CONTACT_SCAN = 1000  # cap the personal-contacts substring scan
-_CONTACT_FIELDS = ("display_name", "email_addresses", "job_title",
-                   "company_name", "phone_numbers")
+_CONTACT_FIELDS = ("display_name", "email_addresses", "job_title", "company_name", "phone_numbers")
 
 
 def _window(start: str, end: str, tz: str) -> Tuple[datetime, datetime]:
     start_dt = parse_when(start, "start", tz)
     end_dt = parse_when(end, "end", tz)
     if end_dt <= start_dt:
-        raise ToolError("validation", "'end' must be after 'start'.",
-                        hint="Example: start='today', end='+7d'.")
+        raise ToolError(
+            "validation", "'end' must be after 'start'.", hint="Example: start='today', end='+7d'."
+        )
     if end_dt - start_dt > timedelta(days=MAX_WINDOW_DAYS):
         raise ToolError(
             "validation",
@@ -54,8 +54,7 @@ def _window(start: str, end: str, tz: str) -> Tuple[datetime, datetime]:
 
 
 def _ceil_to_grid(dt: datetime, step_minutes: int = GRID_MINUTES) -> datetime:
-    floored = dt.replace(minute=(dt.minute // step_minutes) * step_minutes,
-                         second=0, microsecond=0)
+    floored = dt.replace(minute=(dt.minute // step_minutes) * step_minutes, second=0, microsecond=0)
     return floored if floored >= dt else floored + timedelta(minutes=step_minutes)
 
 
@@ -101,8 +100,9 @@ def merge_busy_and_find_slots(
 # -------------------------------------------------------------- handlers
 
 
-async def _list_events(ctx: Context, start: str = "today", end: str = "+7d",
-                       offset: int = 0, limit: int = 25) -> Dict[str, Any]:
+async def _list_events(
+    ctx: Context, start: str = "today", end: str = "+7d", offset: int = 0, limit: int = 25
+) -> Dict[str, Any]:
     tz = ctx.settings.ews_tz
     start_dt, end_dt = _window(start, end, tz)
     offset = max(0, int(offset))
@@ -115,13 +115,12 @@ async def _list_events(ctx: Context, start: str = "today", end: str = "+7d",
         # recurrence masters — wrong for a calendar listing. Never swap.
         # max_items caps the expansion server-side (a year of recurrences
         # is not materialized just to render page one).
-        return list(account.calendar.view(start=start_dt, end=end_dt,
-                                          max_items=cap))
+        return list(account.calendar.view(start=start_dt, end=end_dt, max_items=cap))
 
     items = await ctx.gateway.call(work)
     truncated = len(items) >= cap
     total = None if truncated else len(items)
-    page = items[offset:offset + limit]
+    page = items[offset : offset + limit]
     next_offset = offset + limit if truncated or offset + limit < len(items) else None
     if next_offset is not None and not page:
         next_offset = None
@@ -131,8 +130,10 @@ async def _list_events(ctx: Context, start: str = "today", end: str = "+7d",
 
 def _attendee_entries(item: Any) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
-    for att in [*(getattr(item, "required_attendees", None) or []),
-                *(getattr(item, "optional_attendees", None) or [])]:
+    for att in [
+        *(getattr(item, "required_attendees", None) or []),
+        *(getattr(item, "optional_attendees", None) or []),
+    ]:
         mailbox = getattr(att, "mailbox", None)
         entry: Dict[str, Any] = {
             "email": getattr(mailbox, "email_address", None) or "",
@@ -154,8 +155,11 @@ async def _get_event(ctx: Context, id: str) -> Dict[str, Any]:
         if isinstance(item, Exception):
             raise item  # dispatcher maps ErrorItemNotFound → not_found + hint
         if item is None:
-            raise ToolError("not_found", f"No event found for id {id!r}.",
-                            hint="Re-run list_events and use a fresh event id.")
+            raise ToolError(
+                "not_found",
+                f"No event found for id {id!r}.",
+                hint="Re-run list_events and use a fresh event id.",
+            )
         return item
 
     item = await ctx.gateway.call(work)
@@ -167,17 +171,23 @@ async def _get_event(ctx: Context, id: str) -> Dict[str, Any]:
         if body_obj is not None:
             source = html_to_text(str(body_obj))
     event["body"] = clean_body(source, max_chars=2000)["text"]
-    event["recurring"] = bool(getattr(item, "is_recurring", False)
-                              or getattr(item, "recurrence", None))
+    event["recurring"] = bool(
+        getattr(item, "is_recurring", False) or getattr(item, "recurrence", None)
+    )
     my_response = getattr(item, "my_response_type", None)
     if my_response:
         event["my_response"] = str(my_response)
     return {"ok": True, "event": event}
 
 
-async def _check_availability(ctx: Context, attendees: List[str], start: str,
-                              end: str, duration_minutes: int = 30,
-                              working_hours_only: bool = True) -> Dict[str, Any]:
+async def _check_availability(
+    ctx: Context,
+    attendees: List[str],
+    start: str,
+    end: str,
+    duration_minutes: int = 30,
+    working_hours_only: bool = True,
+) -> Dict[str, Any]:
     tz = ctx.settings.ews_tz
     emails = [a.strip() for a in (attendees or []) if isinstance(a, str) and a.strip()]
     if not emails:
@@ -188,8 +198,9 @@ async def _check_availability(ctx: Context, attendees: List[str], start: str,
     requests = [(email, "Required", False) for email in emails]
 
     def work(account: Any) -> List[Any]:
-        return list(account.protocol.get_free_busy_info(
-            accounts=requests, start=start_dt, end=end_dt))
+        return list(
+            account.protocol.get_free_busy_info(accounts=requests, start=start_dt, end=end_dt)
+        )
 
     views = await ctx.gateway.call(work)
     per_attendee: Dict[str, Any] = {}
@@ -211,8 +222,9 @@ async def _check_availability(ctx: Context, attendees: List[str], start: str,
             if ev_start is None or ev_end is None:
                 continue
             status = str(getattr(ev, "busy_type", None) or "Busy")
-            entries.append({"start": fmt_dt(ev_start, tz),
-                            "end": fmt_dt(ev_end, tz), "status": status})
+            entries.append(
+                {"start": fmt_dt(ev_start, tz), "end": fmt_dt(ev_end, tz), "status": status}
+            )
             if status.lower() != "free":
                 blocks.append((ev_start, ev_end))
         per_attendee[email] = entries
@@ -224,14 +236,14 @@ async def _check_availability(ctx: Context, attendees: List[str], start: str,
             hint="Check the addresses; external calendars may be hidden.",
         )
     hours = WORKING_HOURS if working_hours_only else None
-    raw = merge_busy_and_find_slots(busy_by_attendee, start_dt, end_dt,
-                                    int(duration_minutes), hours)
+    raw = merge_busy_and_find_slots(
+        busy_by_attendee, start_dt, end_dt, int(duration_minutes), hours
+    )
     slots = [{"start": fmt_dt(s, tz), "end": fmt_dt(e, tz)} for s, e in raw]
     out: Dict[str, Any] = {"ok": True, "slots": slots, "per_attendee": per_attendee}
     if degraded:
         out["warnings"] = [
-            f"free/busy unavailable for: {', '.join(degraded)} — slots "
-            "ignore their calendars"
+            f"free/busy unavailable for: {', '.join(degraded)} — slots ignore their calendars"
         ]
     return out
 
@@ -244,8 +256,7 @@ def _gal_person(entry: Any) -> Optional[Tuple[str, Dict[str, Any]]]:
     if not email:
         return None
     person: Dict[str, Any] = {
-        "name": getattr(mailbox, "name", None)
-        or getattr(contact, "display_name", None) or email,
+        "name": getattr(mailbox, "name", None) or getattr(contact, "display_name", None) or email,
         "email": email,
         "source": "gal",
     }
@@ -270,8 +281,7 @@ def _enrich_from_contact(person: Dict[str, Any], contact: Any) -> None:
 
 
 def _contact_person(contact: Any) -> Optional[Tuple[str, Dict[str, Any]]]:
-    emails = [getattr(e, "email", None)
-              for e in (getattr(contact, "email_addresses", None) or [])]
+    emails = [getattr(e, "email", None) for e in (getattr(contact, "email_addresses", None) or [])]
     email = next((e for e in emails if e), None)
     if not email:
         return None  # address-less contacts are useless to the secretary
@@ -285,8 +295,9 @@ def _contact_person(contact: Any) -> Optional[Tuple[str, Dict[str, Any]]]:
     return raw_key, person
 
 
-async def _find_people(ctx: Context, query: str, source: str = "auto",
-                       limit: int = 10) -> Dict[str, Any]:
+async def _find_people(
+    ctx: Context, query: str, source: str = "auto", limit: int = 10
+) -> Dict[str, Any]:
     q = (query or "").strip()
     if not q:
         raise ToolError("validation", "'query' must be a non-empty string.")
@@ -296,8 +307,7 @@ async def _find_people(ctx: Context, query: str, source: str = "auto",
         gal: List[Any] = []
         matched: List[Any] = []
         if source in ("auto", "gal"):
-            gal = list(account.protocol.resolve_names(
-                [q], return_full_contact_data=True))
+            gal = list(account.protocol.resolve_names([q], return_full_contact_data=True))
         if source in ("auto", "contacts"):
             qs = account.contacts.all()
             try:
@@ -309,8 +319,10 @@ async def _find_people(ctx: Context, query: str, source: str = "auto",
                 pass
             for contact in islice(qs, MAX_CONTACT_SCAN):
                 name = str(getattr(contact, "display_name", "") or "")
-                emails = [str(getattr(e, "email", "") or "") for e in
-                          (getattr(contact, "email_addresses", None) or [])]
+                emails = [
+                    str(getattr(e, "email", "") or "")
+                    for e in (getattr(contact, "email_addresses", None) or [])
+                ]
                 if ql in " ".join([name, *emails]).lower():
                     matched.append(contact)
         return gal, matched
@@ -325,13 +337,16 @@ async def _find_people(ctx: Context, query: str, source: str = "auto",
         rows = ctx.cache.senders_matching(q, limit=max(0, int(limit)))
         if not rows:
             raise
-        people = [{
-            "id": ctx.aliaser.alias_for(r["sender_email"], "p"),
-            "name": r["sender_name"] or r["sender_email"],
-            "email": r["sender_email"],
-            "source": "mirror",
-            "history": {"received_count": r["msgs"], "last_received": r["last_seen"]},
-        } for r in rows]
+        people = [
+            {
+                "id": ctx.aliaser.alias_for(r["sender_email"], "p"),
+                "name": r["sender_name"] or r["sender_email"],
+                "email": r["sender_email"],
+                "source": "mirror",
+                "history": {"received_count": r["msgs"], "last_received": r["last_seen"]},
+            }
+            for r in rows
+        ]
         out = envelope(people, len(people), 0)
         out["source"] = "cache"
         return out
@@ -357,7 +372,7 @@ async def _find_people(ctx: Context, query: str, source: str = "auto",
         # consume p-numbers.
         people.append({"id": ctx.aliaser.alias_for(raw_key, "p"), **person})
     if ctx.cache is not None:
-        for person in people[:max(0, int(limit))]:
+        for person in people[: max(0, int(limit))]:
             try:
                 stats = ctx.cache.contact_stats(person["email"])
             except Exception:
@@ -365,7 +380,7 @@ async def _find_people(ctx: Context, query: str, source: str = "auto",
             if stats:
                 person["history"] = stats
     total = len(people)
-    return envelope(people[:max(0, int(limit))], total, 0)
+    return envelope(people[: max(0, int(limit))], total, 0)
 
 
 async def _get_contact(ctx: Context, id: str) -> Dict[str, Any]:
@@ -378,8 +393,7 @@ async def _get_contact(ctx: Context, id: str) -> Dict[str, Any]:
 
     def work(account: Any) -> Optional[Tuple[str, Dict[str, Any]]]:
         if "@" in key:  # GAL raw keys ARE the address
-            for entry in account.protocol.resolve_names(
-                    [key], return_full_contact_data=True):
+            for entry in account.protocol.resolve_names([key], return_full_contact_data=True):
                 if isinstance(entry, Exception):
                     continue
                 built = _gal_person(entry)
@@ -405,11 +419,13 @@ async def _get_contact(ctx: Context, id: str) -> Dict[str, Any]:
         # GAL unavailable or no match — mail history still knows them.
         rows = ctx.cache.senders_matching(key, limit=1)
         if rows:
-            person = {"name": rows[0]["sender_name"] or key, "email": key,
-                      "source": "mirror"}
+            person = {"name": rows[0]["sender_name"] or key, "email": key, "source": "mirror"}
     if person is None:
-        raise ToolError("not_found", f"No contact found for {id!r}.",
-                        hint="Use find_people to search by name or fragment.")
+        raise ToolError(
+            "not_found",
+            f"No contact found for {id!r}.",
+            hint="Use find_people to search by name or fragment.",
+        )
     if ctx.cache is not None:
         try:
             stats = ctx.cache.contact_stats(person["email"])
@@ -417,8 +433,7 @@ async def _get_contact(ctx: Context, id: str) -> Dict[str, Any]:
                 person["history"] = stats
         except Exception:
             pass
-    return {"ok": True,
-            "person": {"id": ctx.aliaser.alias_for(raw_key, "p"), **person}}
+    return {"ok": True, "person": {"id": ctx.aliaser.alias_for(raw_key, "p"), **person}}
 
 
 async def _get_oof_settings(ctx: Context) -> Dict[str, Any]:
@@ -487,14 +502,29 @@ TOOLS: List[ToolSpec] = [
         input_schema={
             "type": "object",
             "properties": {
-                "start": {"type": "string", "default": "today",
-                          "description": f"Window start: {_DATE_DESC}."},
-                "end": {"type": "string", "default": "+7d",
-                        "description": f"Window end (exclusive): {_DATE_DESC}."},
-                "offset": {"type": "integer", "default": 0, "minimum": 0,
-                           "description": "Pagination offset into the window."},
-                "limit": {"type": "integer", "default": 25, "minimum": 1,
-                          "maximum": 100, "description": "Max events returned."},
+                "start": {
+                    "type": "string",
+                    "default": "today",
+                    "description": f"Window start: {_DATE_DESC}.",
+                },
+                "end": {
+                    "type": "string",
+                    "default": "+7d",
+                    "description": f"Window end (exclusive): {_DATE_DESC}.",
+                },
+                "offset": {
+                    "type": "integer",
+                    "default": 0,
+                    "minimum": 0,
+                    "description": "Pagination offset into the window.",
+                },
+                "limit": {
+                    "type": "integer",
+                    "default": 25,
+                    "minimum": 1,
+                    "maximum": 100,
+                    "description": "Max events returned.",
+                },
             },
             "required": [],
             "additionalProperties": False,
@@ -513,8 +543,10 @@ TOOLS: List[ToolSpec] = [
         input_schema={
             "type": "object",
             "properties": {
-                "id": {"type": "string",
-                       "description": "Event id — alias (e1, e2, …) or raw EWS id."},
+                "id": {
+                    "type": "string",
+                    "description": "Event id — alias (e1, e2, …) or raw EWS id.",
+                },
             },
             "required": ["id"],
             "additionalProperties": False,
@@ -537,18 +569,25 @@ TOOLS: List[ToolSpec] = [
             "type": "object",
             "properties": {
                 "attendees": {
-                    "type": "array", "items": {"type": "string"}, "minItems": 1,
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 1,
                     "description": "SMTP email addresses to check.",
                 },
-                "start": {"type": "string",
-                          "description": f"Window start: {_DATE_DESC}."},
-                "end": {"type": "string",
-                        "description": f"Window end: {_DATE_DESC}."},
-                "duration_minutes": {"type": "integer", "default": 30,
-                                     "minimum": 1, "maximum": 1440,
-                                     "description": "Desired meeting length."},
-                "working_hours_only": {"type": "boolean", "default": True,
-                                       "description": "Confine slots to 09:00-17:00."},
+                "start": {"type": "string", "description": f"Window start: {_DATE_DESC}."},
+                "end": {"type": "string", "description": f"Window end: {_DATE_DESC}."},
+                "duration_minutes": {
+                    "type": "integer",
+                    "default": 30,
+                    "minimum": 1,
+                    "maximum": 1440,
+                    "description": "Desired meeting length.",
+                },
+                "working_hours_only": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Confine slots to 09:00-17:00.",
+                },
             },
             "required": ["attendees", "start", "end"],
             "additionalProperties": False,
@@ -567,13 +606,20 @@ TOOLS: List[ToolSpec] = [
         input_schema={
             "type": "object",
             "properties": {
-                "query": {"type": "string",
-                          "description": "Name or email fragment, e.g. 'ahmed'."},
-                "source": {"type": "string", "enum": ["auto", "gal", "contacts"],
-                           "default": "auto",
-                           "description": "Where to search; auto = GAL + contacts."},
-                "limit": {"type": "integer", "default": 10, "minimum": 1,
-                          "maximum": 50, "description": "Max people returned."},
+                "query": {"type": "string", "description": "Name or email fragment, e.g. 'ahmed'."},
+                "source": {
+                    "type": "string",
+                    "enum": ["auto", "gal", "contacts"],
+                    "default": "auto",
+                    "description": "Where to search; auto = GAL + contacts.",
+                },
+                "limit": {
+                    "type": "integer",
+                    "default": 10,
+                    "minimum": 1,
+                    "maximum": 50,
+                    "description": "Max people returned.",
+                },
             },
             "required": ["query"],
             "additionalProperties": False,
@@ -593,8 +639,7 @@ TOOLS: List[ToolSpec] = [
         input_schema={
             "type": "object",
             "properties": {
-                "id": {"type": "string",
-                       "description": "p-alias, raw contact id, or email."},
+                "id": {"type": "string", "description": "p-alias, raw contact id, or email."},
             },
             "required": ["id"],
             "additionalProperties": False,

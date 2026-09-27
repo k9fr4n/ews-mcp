@@ -22,17 +22,21 @@ async def _echo(ctx, **kwargs):
 
 def _ctx(tmp_path) -> Context:
     spec = ToolSpec(
-        name="echo", description="echo test tool", side_effect_class="read",
+        name="echo",
+        description="echo test tool",
+        side_effect_class="read",
         input_schema={
             "type": "object",
             "properties": {"q": {"type": "string"}},
             "additionalProperties": False,
         },
-        handler=_echo, requires_ews=False,
+        handler=_echo,
+        requires_ews=False,
     )
     ctx = Context(
         settings=make_settings(),
-        gateway=None, manager=None,
+        gateway=None,
+        manager=None,
         aliaser=get_aliaser(str(tmp_path / "alias")),
         audit=AuditLog(str(tmp_path / "audit")),
     )
@@ -63,8 +67,9 @@ def _status_and_body(sent):
 
 def _post(app, name, payload):
     body = json.dumps(payload).encode() if not isinstance(payload, bytes) else payload
-    return _drive(app, f"/api/tools/{name}",
-                  [{"type": "http.request", "body": body, "more_body": False}])
+    return _drive(
+        app, f"/api/tools/{name}", [{"type": "http.request", "body": body, "more_body": False}]
+    )
 
 
 def test_valid_call_dispatches(tmp_path):
@@ -108,10 +113,14 @@ def test_oversize_body_is_capped(tmp_path):
 
 def test_disconnect_mid_body_does_not_hang_or_crash(tmp_path):
     app = build_app(_ctx(tmp_path), make_settings())
-    sent = _drive(app, "/api/tools/echo", [
-        {"type": "http.request", "body": b'{"q":', "more_body": True},
-        {"type": "http.disconnect"},
-    ])
+    sent = _drive(
+        app,
+        "/api/tools/echo",
+        [
+            {"type": "http.request", "body": b'{"q":', "more_body": True},
+            {"type": "http.disconnect"},
+        ],
+    )
     assert sent == []  # no response to a vanished client — and no hang
 
 

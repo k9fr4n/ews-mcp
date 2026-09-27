@@ -16,6 +16,7 @@ Usage:
 
 Exit codes: 0 = chain intact, 1 = break detected, 2 = usage/IO error.
 """
+
 import hashlib
 import json
 import sys
@@ -32,9 +33,7 @@ def verify(audit_dir: Path) -> int:
     breaks = 0
     last_rec = None
     for path in files:
-        for lineno, raw in enumerate(
-            path.read_text(encoding="utf-8").splitlines(), 1
-        ):
+        for lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             raw = raw.strip()
             if not raw:
                 continue
@@ -53,8 +52,7 @@ def verify(audit_dir: Path) -> int:
                 print(f"BREAK {path.name}:{lineno}: hash mismatch (seq={rec.get('seq')})")
                 breaks += 1
             if rec.get("prev") != prev[:12]:
-                print(f"BREAK {path.name}:{lineno}: prev pointer mismatch "
-                      f"(seq={rec.get('seq')})")
+                print(f"BREAK {path.name}:{lineno}: prev pointer mismatch (seq={rec.get('seq')})")
                 breaks += 1
             # Re-anchor on the recorded hash so one break doesn't cascade.
             prev = h if isinstance(h, str) else prev
@@ -69,12 +67,13 @@ def verify(audit_dir: Path) -> int:
             breaks += 1
         else:
             if state.get("prev") != prev:
-                print("BREAK chain.state head does not match the last record "
-                      "(truncated tail?)")
+                print("BREAK chain.state head does not match the last record (truncated tail?)")
                 breaks += 1
             if state.get("seq") != last_rec.get("seq"):
-                print(f"BREAK chain.state seq={state.get('seq')} but last "
-                      f"record seq={last_rec.get('seq')}")
+                print(
+                    f"BREAK chain.state seq={state.get('seq')} but last "
+                    f"record seq={last_rec.get('seq')}"
+                )
                 breaks += 1
     print(f"checked {checked} chained record(s); {breaks} break(s)")
     return 1 if breaks else 0

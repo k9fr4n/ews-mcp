@@ -10,6 +10,7 @@ send_draft; tier filtering shrinks the registry.
 
 Run from v5/:  python scripts/boot_smoke.py [draft|full]
 """
+
 import json
 import os
 import subprocess
@@ -39,20 +40,30 @@ def _req(method, path, payload=None, timeout=8):
 def main() -> int:
     tier = sys.argv[1] if len(sys.argv) > 1 else "full"
     env = dict(os.environ)
-    env.update({
-        "EWS_SERVER_URL": "https://192.0.2.1/EWS/Exchange.asmx",  # TEST-NET-1
-        "EWS_EMAIL": "smoke@example.invalid",
-        "EWS_USERNAME": "smoke", "EWS_PASSWORD": "smoke",
-        "MCP_TRANSPORT": "http", "MCP_HOST": "127.0.0.1", "MCP_PORT": str(PORT),
-        "MCP_API_KEY": KEY,
-        "SEND_ENABLED": "false",
-        "EWS_CAPABILITY_TIER": tier,
-        "REQUEST_TIMEOUT": "3", "LOG_LEVEL": "WARNING",
-        "DATA_DIR": os.path.join(os.environ.get("TEMP", "/tmp"), "v5-smoke-data"),
-        "PYTHONPATH": os.getcwd(),
-    })
-    proc = subprocess.Popen([sys.executable, "-m", "ewsmcp.main"], env=env,
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    env.update(
+        {
+            "EWS_SERVER_URL": "https://192.0.2.1/EWS/Exchange.asmx",  # TEST-NET-1
+            "EWS_EMAIL": "smoke@example.invalid",
+            "EWS_USERNAME": "smoke",
+            "EWS_PASSWORD": "smoke",
+            "MCP_TRANSPORT": "http",
+            "MCP_HOST": "127.0.0.1",
+            "MCP_PORT": str(PORT),
+            "MCP_API_KEY": KEY,
+            "SEND_ENABLED": "false",
+            "EWS_CAPABILITY_TIER": tier,
+            "REQUEST_TIMEOUT": "3",
+            "LOG_LEVEL": "WARNING",
+            "DATA_DIR": os.path.join(os.environ.get("TEMP", "/tmp"), "v5-smoke-data"),
+            "PYTHONPATH": os.getcwd(),
+        }
+    )
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "ewsmcp.main"],
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
     failures = []
     try:
         deadline = time.time() + 30
