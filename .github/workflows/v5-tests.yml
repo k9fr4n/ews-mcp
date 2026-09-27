@@ -34,9 +34,14 @@ jobs:
         run: ruff check v5
       - name: Format check (blocking)
         run: ruff format --check v5
-      - name: Unit + contract suites (blocking)
+      - name: Unit + contract suites and coverage gate (blocking)
         working-directory: v5
-        run: python -m pytest tests -q
+        run: >-
+          python -m pytest tests -q
+          --cov=ewsmcp
+          --cov-report=term-missing
+          --cov-report=markdown-append:$GITHUB_STEP_SUMMARY
+          --cov-fail-under=79.1993
       - name: Docs match the registry (blocking)
         working-directory: v5
         run: python scripts/dump_tool_table.py --check

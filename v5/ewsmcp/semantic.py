@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional, Protocol, Tuple
 
 try:  # optional dependency — module-top guard (fails loud, degrades soft)
     import psycopg
-except ImportError:  # pragma: no cover - absence is the default posture
+except ImportError:
     psycopg = None
 
 logger = logging.getLogger(__name__)
