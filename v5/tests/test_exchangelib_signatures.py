@@ -121,6 +121,8 @@ PINS = {
     Folder.refresh: ["self"],
     # --- reliability (gateway)
     FaultTolerance.__init__: ["self", "max_wait"],
+    FaultTolerance.back_off: ["self", "seconds"],
+    FaultTolerance.raise_response_errors: ["self", "response"],
 }
 
 

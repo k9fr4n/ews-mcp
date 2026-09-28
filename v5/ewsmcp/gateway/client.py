@@ -8,12 +8,14 @@ ConnectionManager treats connecting as a state, not a failure.
 
 import asyncio
 import logging
+import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from exchangelib import Account, Configuration, Credentials, DELEGATE, EWSTimeZone
+from exchangelib.errors import ErrorInternalServerTransientError, ErrorServerBusy
 from exchangelib.protocol import (
     BaseProtocol,
     CachingProtocol,
@@ -37,6 +39,136 @@ WELL_KNOWN = {
     "f:contacts": "contacts",
     "f:tasks": "tasks",
 }
+
+
+def _ews_response_diagnostics(response: Any) -> Dict[str, Any]:
+    """Extract a small, allowlisted diagnostic record; never retain payloads."""
+    headers = {str(key).lower(): str(value) for key, value in response.headers.items()}
+    diagnostics: Dict[str, Any] = {"http_status": response.status_code}
+    retry_after = headers.get("retry-after", "").strip()
+    if retry_after.isdigit() and int(retry_after) <= 86_400:
+        diagnostics["retry_after_s"] = int(retry_after)
+    for key, output in (
+        ("x-feserver", "frontend"),
+        ("x-beserver", "backend"),
+        ("request-id", "request_id"),
+        ("x-caserrorcode", "cas_error"),
+    ):
+        value = headers.get(key)
+        if value:
+            diagnostics[output] = re.sub(r"[^A-Za-z0-9_.:/-]+", "_", value)[:120]
+
+    challenge = headers.get("www-authenticate", "")
+    schemes = sorted(
+        set(
+            re.findall(
+                r"(?i)(?<![\w-])(Negotiate|NTLM|Basic|Digest|Bearer)(?![\w-])",
+                challenge,
+            )
+        )
+    )
+    if schemes:
+        diagnostics["auth_schemes"] = ",".join(schemes)
+
+    content = getattr(response, "content", b"")
+    if isinstance(content, str):
+        content = content.encode("utf-8", errors="replace")
+    elif not isinstance(content, bytes):
+        content = b""
+    if len(content) <= 1_000_000 and b"ResponseCode" in content and b"Error" in content:
+        match = re.search(
+            rb"<(?:[A-Za-z_][\w.-]*:)?ResponseCode\b[^>]*>\s*"
+            rb"(Error[A-Za-z0-9]{1,80})\s*</(?:[A-Za-z_][\w.-]*:)?ResponseCode\s*>",
+            content,
+        )
+        if match:
+            diagnostics["ews_code"] = match.group(1).decode("ascii")
+    if len(content) <= 1_000_000 and b"BackOffMilliseconds" in content:
+        match = re.search(
+            rb"<(?:[A-Za-z_][\w.-]*:)?Value\b[^>]*\bName\s*=\s*[\"']"
+            rb"BackOffMilliseconds[\"'][^>]*>\s*(\d+)\s*</"
+            rb"(?:[A-Za-z_][\w.-]*:)?Value\s*>",
+            content,
+        )
+        if match:
+            backoff_ms = int(match.group(1))
+            if backoff_ms <= 86_400_000:
+                diagnostics["soap_backoff_ms"] = backoff_ms
+    return diagnostics
+
+
+def _diagnostic_fields(diagnostics: Dict[str, Any]) -> str:
+    return " ".join(f"{key}={value}" for key, value in diagnostics.items())
+
+
+class DiagnosticFaultTolerance(FaultTolerance):
+    """Keep exchangelib retries, while logging safe response and backoff facts."""
+
+    def __init__(self, max_wait: int = 3600):
+        super().__init__(max_wait=max_wait)
+        self._diagnostic_local = threading.local()
+
+    def raise_response_errors(self, response: Any) -> None:
+        diagnostics = _ews_response_diagnostics(response)
+        self._diagnostic_local.response = diagnostics
+        ews_code = diagnostics.get("ews_code")
+        if response.status_code != 200 or (ews_code and ews_code != "NoError"):
+            logger.warning("EWS response diagnostic: %s", _diagnostic_fields(diagnostics))
+        try:
+            result = super().raise_response_errors(response)
+        except (ErrorInternalServerTransientError, ErrorServerBusy):
+            raise
+        except Exception:
+            self._diagnostic_local.response = {}
+            raise
+        if ews_code != "ErrorServerBusy":
+            self._diagnostic_local.response = {}
+        return result
+
+    def back_off(self, seconds: Optional[float]) -> None:
+        diagnostics = getattr(self._diagnostic_local, "response", {})
+        if diagnostics.get("soap_backoff_ms") is not None:
+            origin = "ews_soap"
+        elif diagnostics.get("retry_after_s") is not None:
+            origin = "http_retry_after"
+        else:
+            origin = "exchangelib_fallback"
+        summary = " ".join(
+            f"{key}={diagnostics[key]}"
+            for key in (
+                "http_status",
+                "ews_code",
+                "soap_backoff_ms",
+                "retry_after_s",
+                "auth_schemes",
+                "frontend",
+                "request_id",
+            )
+            if key in diagnostics
+        )
+        effective_seconds = self.DEFAULT_BACKOFF if seconds is None else seconds
+        if effective_seconds > self.max_wait:
+            logger.error(
+                "EWS retry limit reached: requested_backoff_s=%s max_wait_s=%s "
+                "backoff_origin=%s %s",
+                effective_seconds,
+                self.max_wait,
+                origin,
+                summary,
+            )
+        else:
+            logger.warning(
+                "EWS retry backoff: requested_backoff_s=%s max_wait_s=%s "
+                "backoff_origin=%s %s",
+                effective_seconds,
+                self.max_wait,
+                origin,
+                summary,
+            )
+        try:
+            return super().back_off(seconds)
+        finally:
+            self._diagnostic_local.response = {}
 
 
 class EWSGateway:
@@ -70,7 +202,7 @@ class EWSGateway:
         kwargs: Dict[str, Any] = dict(
             service_endpoint=s.ews_server_url,
             credentials=Credentials(s.ews_username or s.ews_email, s.ews_password or ""),
-            retry_policy=FaultTolerance(max_wait=s.ews_retry_max_wait_seconds),
+            retry_policy=DiagnosticFaultTolerance(max_wait=s.ews_retry_max_wait_seconds),
         )
         if s.ews_auth_type_force:  # escape hatch for a DIFFERENT Exchange only
             logger.warning(
