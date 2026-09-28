@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
-from exchangelib.errors import ErrorServerBusy, RateLimitError
+from exchangelib.errors import ErrorServerBusy, RateLimitError, UnauthorizedError
 
 from ewsmcp.gateway.client import DiagnosticFaultTolerance, _ews_response_diagnostics
 
@@ -53,10 +53,11 @@ def test_response_diagnostics_extract_soap_busy_code_and_backoff():
     }
 
 
-def test_retry_limit_log_correlates_http_auth_challenge_without_logging_token(caplog):
+def test_auth_challenge_401_raises_unauthorized_without_logging_token(caplog):
     policy = DiagnosticFaultTolerance(max_wait=300)
     response = SimpleNamespace(
         status_code=401,
+        url="https://mail.ecritel.net/EWS/Exchange.asmx",
         headers={
             "WWW-Authenticate": "Negotiate private-token",
             "request-id": "request-456",
@@ -64,18 +65,29 @@ def test_retry_limit_log_correlates_http_auth_challenge_without_logging_token(ca
         content=b"private response body",
     )
 
-    with pytest.raises(ErrorServerBusy):
+    with pytest.raises(UnauthorizedError):
         policy.raise_response_errors(response)
-    with pytest.raises(RateLimitError):
-        policy.back_off(320)
 
     assert "http_status=401" in caplog.text
     assert "auth_schemes=Negotiate" in caplog.text
-    assert "requested_backoff_s=320" in caplog.text
-    assert "max_wait_s=300" in caplog.text
     assert "request_id=request-456" in caplog.text
     assert "private-token" not in caplog.text
     assert "private response body" not in caplog.text
+
+
+def test_bare_401_without_challenge_remains_retryable():
+    # A 401 with no WWW-Authenticate challenge is Exchange asking us to
+    # throttle, not a login rejection — keep treating it as retryable.
+    policy = DiagnosticFaultTolerance(max_wait=300)
+    response = SimpleNamespace(
+        status_code=401,
+        url="https://mail.ecritel.net/EWS/Exchange.asmx",
+        headers={},
+        content=b"",
+    )
+
+    with pytest.raises(ErrorServerBusy):
+        policy.raise_response_errors(response)
 
 
 def test_retry_limit_log_identifies_soap_backoff(caplog):

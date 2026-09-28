@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     # via exchangelib auto-negotiation (verified live 2026-06-12; pinning
     # BASIC/NTLM both fail). Escape hatch for a *different* server only.
     ews_auth_type_force: Optional[Literal["basic", "ntlm", "digest"]] = None
+    # requests_ntlm attaches a TLS Channel Binding Token (CBT) to the NTLM
+    # handshake by default (send_cbt=True). This Exchange rejects that token
+    # with HTTP 401 even when the credentials are correct — the front door
+    # terminates TLS with a certificate that differs from the backend's. Set
+    # false for this deployment; keep the secure default (true) anywhere the
+    # Exchange honors CBT.
+    ews_ntlm_send_cbt: bool = True
     ews_insecure_skip_verify: bool = False
     ews_tz: str = "Asia/Riyadh"
     request_timeout: int = 30

@@ -25,6 +25,7 @@ from typing import Any, Callable, Coroutine, Dict, Optional
 STATE_CONNECTING = "connecting"
 STATE_WARM = "warm"
 STATE_DEGRADED = "degraded"
+STATE_AUTH_FAILED = "auth_failed"
 
 # After this many consecutive failures, escalate the recovery ladder:
 # drop the cached Account/Protocol so the next attempt re-runs the full
@@ -123,6 +124,16 @@ class ConnectionManager:
                 return
             with self._lock:
                 attempts = self._attempts
+                state = self._state
+            # A rejected login (bad/expired password, wrong mailbox, or a CBT
+            # mismatch) will not improve by retrying — it only risks locking
+            # the account. Stop the warmup loop and stay observable.
+            if state == STATE_AUTH_FAILED:
+                self.logger.error(
+                    "warmup: authentication rejected (%s) — not retrying",
+                    self._last_error,
+                )
+                return
             # Recovery ladder: every Nth failure, drop the cached
             # Account/Protocol so the next try renegotiates auth on a
             # genuinely fresh session.
@@ -146,15 +157,18 @@ class ConnectionManager:
         """Blocking connect/probe attempt; runs in a worker thread."""
         try:
             ok = self._client.test_connection()
-            if not ok:
-                self._mark_failure(
-                    getattr(self._client, "last_connection_error", None)
-                    or "connection test returned False"
-                )
-            return ok
         except Exception as exc:
             self._mark_failure(f"{type(exc).__name__}: {exc}")
             return False
+        if ok:
+            return True
+        error = (
+            getattr(self._client, "last_connection_error", None) or "connection test returned False"
+        )
+        self._mark_failure(error)
+        if getattr(self._client, "auth_failed", False):
+            self._mark_auth_failed()
+        return False
 
     # ------------------------------------------------------------- heartbeat
 
@@ -208,6 +222,11 @@ class ConnectionManager:
         with self._lock:
             self._attempts += 1
             self._last_error = error[:500]
+
+    def _mark_auth_failed(self) -> None:
+        with self._lock:
+            self._state = STATE_AUTH_FAILED
+            self._next_retry_ts = None
 
     async def _fire_on_warm(self) -> None:
         """Run the on-warm callback exactly once per process."""

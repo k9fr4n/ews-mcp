@@ -1,6 +1,19 @@
 # Changelog
 
-## [Unreleased]
+## [1.0.1] - 2026-09-28
+
+### Added
+- `EWS_NTLM_SEND_CBT` setting (default `true`). Set `false` for Exchanges
+  that reject requests_ntlm's TLS Channel Binding Token with HTTP 401 even
+  when the credentials are correct — the front door terminates TLS with a
+  certificate that differs from the backend's. The server then patches
+  `exchangelib.protocol.get_auth_instance` to force `send_cbt=False` for NTLM.
+
+### Fixed
+- A failed NTLM handshake (bad/expired password, wrong mailbox, or a CBT
+  mismatch) was masked as `upstream_unavailable` and hammered with backoff
+  retries, risking account lockout. It now surfaces as `auth_failed` and the
+  warmup loop stops retrying instead of re-attempting a rejected login.
 
 ## [1.0.0] - 2026-09-28
 

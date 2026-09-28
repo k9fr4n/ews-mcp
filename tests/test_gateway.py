@@ -9,6 +9,7 @@ session actually renegotiates auth.
 from unittest.mock import MagicMock
 
 from conftest import make_settings
+from exchangelib.errors import UnauthorizedError
 
 from ewsmcp.gateway import client as client_mod
 from ewsmcp.gateway.client import EWSGateway
@@ -50,6 +51,44 @@ def test_reset_evicts_protocol_cache_and_folder_cache(monkeypatch):
     assert cleared == [True]  # without this, the wedged Protocol comes back
     assert gw._folder_cache == {}
     assert gw._folder_cache_ts == 0.0
+
+
+def test_probe_marks_auth_failed_on_unauthorized():
+    gw, account = _gateway_with_mock_account()
+    account.root.refresh.side_effect = UnauthorizedError("Invalid credentials")
+    assert gw.test_connection() is False
+    assert gw.auth_failed is True
+    assert "UnauthorizedError" in gw.last_connection_error
+
+
+def test_reset_clears_auth_failed():
+    gw, account = _gateway_with_mock_account()
+    account.root.refresh.side_effect = UnauthorizedError("Invalid credentials")
+    gw.test_connection()
+    assert gw.auth_failed is True
+    gw.reset()
+    assert gw.auth_failed is False
+
+
+def test_disable_ntlm_cbt_forces_send_cbt_false(monkeypatch):
+    import exchangelib.protocol as protocol
+
+    calls = []
+
+    def fake_original(auth_type, **kwargs):
+        calls.append((auth_type, dict(kwargs)))
+        return object()
+
+    monkeypatch.setattr(client_mod, "_NTLM_CBT_PATCHED", False)
+    monkeypatch.setattr(protocol, "get_auth_instance", fake_original)
+
+    client_mod._disable_ntlm_cbt()
+    protocol.get_auth_instance(protocol.NTLM, username="u", password="p")
+    protocol.get_auth_instance("basic", username="u", password="p")
+
+    assert calls[0] == (protocol.NTLM, {"username": "u", "password": "p", "send_cbt": False})
+    assert calls[1] == ("basic", {"username": "u", "password": "p"})
+    assert client_mod._NTLM_CBT_PATCHED is True
 
 
 def test_reset_survives_close_and_clear_failures(monkeypatch):

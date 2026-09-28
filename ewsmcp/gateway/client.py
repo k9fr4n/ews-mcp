@@ -15,13 +15,18 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from exchangelib import Account, Configuration, Credentials, DELEGATE, EWSTimeZone
-from exchangelib.errors import ErrorInternalServerTransientError, ErrorServerBusy
+from exchangelib.errors import (
+    ErrorInternalServerTransientError,
+    ErrorServerBusy,
+    UnauthorizedError,
+)
 from exchangelib.protocol import (
     BaseProtocol,
     CachingProtocol,
     FaultTolerance,
     NoVerifyHTTPAdapter,
 )
+import exchangelib.protocol as protocol_module
 
 from ..config import Settings
 from ..errors import ToolError
@@ -101,6 +106,32 @@ def _diagnostic_fields(diagnostics: Dict[str, Any]) -> str:
     return " ".join(f"{key}={value}" for key, value in diagnostics.items())
 
 
+_NTLM_CBT_PATCHED = False
+
+
+def _disable_ntlm_cbt() -> None:
+    """Stop requests_ntlm from sending a Channel Binding Token (CBT).
+
+    exchangelib never exposes ``send_cbt``, and ``requests_ntlm`` defaults it
+    to True. This Exchange rejects the TLS-server-end-point binding with a 401
+    even when the credentials are correct, so we patch the single call site
+    (``exchangelib.protocol.get_auth_instance``) to force it off for NTLM.
+    Idempotent and process-wide.
+    """
+    global _NTLM_CBT_PATCHED
+    if _NTLM_CBT_PATCHED:
+        return
+    original = protocol_module.get_auth_instance
+
+    def patched(auth_type, **kwargs):
+        if auth_type == protocol_module.NTLM:
+            kwargs["send_cbt"] = False
+        return original(auth_type, **kwargs)
+
+    protocol_module.get_auth_instance = patched
+    _NTLM_CBT_PATCHED = True
+
+
 class DiagnosticFaultTolerance(FaultTolerance):
     """Keep exchangelib retries, while logging safe response and backoff facts."""
 
@@ -114,6 +145,15 @@ class DiagnosticFaultTolerance(FaultTolerance):
         ews_code = diagnostics.get("ews_code")
         if response.status_code != 200 or (ews_code and ews_code != "NoError"):
             logger.warning("EWS response diagnostic: %s", _diagnostic_fields(diagnostics))
+        # A 401 that still carries an authentication challenge is the server
+        # re-challenging after a failed NTLM handshake — a credential (or
+        # channel-binding) rejection. exchangelib otherwise treats every 401
+        # as retryable ErrorServerBusy, which hammers the account with backoff
+        # and masks the real cause as a 503. Surface it as UnauthorizedError.
+        if response.status_code == 401 and diagnostics.get("auth_schemes"):
+            raise UnauthorizedError(
+                f"Invalid credentials for {getattr(response, 'url', 'Exchange')}"
+            )
         try:
             result = super().raise_response_errors(response)
         except (ErrorInternalServerTransientError, ErrorServerBusy):
@@ -180,11 +220,15 @@ class EWSGateway:
             thread_name_prefix="ews",
         )
         self.last_connection_error: Optional[str] = None
+        self.auth_failed: bool = False
         self._folder_cache: Dict[str, Any] = {}
         self._folder_cache_ts = 0.0
         if settings.ews_insecure_skip_verify:
             BaseProtocol.HTTP_ADAPTER_CLS = NoVerifyHTTPAdapter
             logger.warning("TLS verification DISABLED for Exchange traffic")
+        if not settings.ews_ntlm_send_cbt:
+            _disable_ntlm_cbt()
+            logger.info("NTLM Channel Binding Token (CBT) disabled for this Exchange")
 
     # ------------------------------------------------------------- account
 
@@ -240,6 +284,7 @@ class EWSGateway:
             logger.debug("protocol cache clear failed: %s", e)
         self._folder_cache.clear()
         self._folder_cache_ts = 0.0
+        self.auth_failed = False
 
     def test_connection(self) -> bool:
         """Real network probe — must round-trip on EVERY call.
@@ -252,8 +297,15 @@ class EWSGateway:
         try:
             self.account.root.refresh()
             self.last_connection_error = None
+            self.auth_failed = False
             return True
+        except UnauthorizedError as e:
+            self.auth_failed = True
+            self.last_connection_error = f"{type(e).__name__}: {e}"
+            logger.error("connection test failed (authentication): %s", self.last_connection_error)
+            return False
         except Exception as e:
+            self.auth_failed = False
             self.last_connection_error = f"{type(e).__name__}: {e}"
             logger.error("connection test failed: %s", self.last_connection_error)
             return False
