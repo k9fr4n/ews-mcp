@@ -1,6 +1,5 @@
 # Publish the image to GHCR on v1.* tags — gated on the FULL test
-# workflow (no continue-on-error anywhere). NEVER tags :latest — promotion
-# of :latest is a deliberate manual act after the canary ladder completes.
+# workflow (no continue-on-error anywhere).
 name: publish
 
 env:
@@ -46,15 +45,19 @@ jobs:
           fi
           echo "exact=${IMAGE_NAME}:${REF}" >> "$GITHUB_OUTPUT"
           echo "line=${IMAGE_NAME}:v1" >> "$GITHUB_OUTPUT"
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "latest=${IMAGE_NAME}:latest" >> "$GITHUB_OUTPUT"
+          fi
       - uses: docker/build-push-action@v6
         with:
           context: .
           file: Dockerfile
           push: true
-          # The exact tag is what the NAS canary pins; :v1 tracks the major line.
+          # Release tags are immutable; :v1 and :latest are moving aliases.
           tags: |
             ${{ steps.tags.outputs.exact }}
             ${{ steps.tags.outputs.line }}
+            ${{ steps.tags.outputs.latest }}
           labels: |
             org.opencontainers.image.title=ews-mcp
             org.opencontainers.image.description=MCP server for Microsoft Exchange / Office 365

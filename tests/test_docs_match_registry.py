@@ -19,10 +19,10 @@ def test_tool_table_matches_registry():
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
 
-def test_version_is_101():
+def test_version_matches_package_metadata():
     spec = importlib.util.spec_from_file_location("_ews_mcp_init", ROOT / "ewsmcp" / "__init__.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    assert mod.__version__ == "1.0.1"
+    assert mod.__version__ == "1.0.2"
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert f'version = "{mod.__version__}"' in pyproject

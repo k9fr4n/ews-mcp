@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.2] - 2026-09-28
+
+### Added
+- Publish the `latest` container tag alongside the exact release and `v1`
+  tags whenever a version tag is released.
+
 ## [1.0.1] - 2026-09-28
 
 ### Added
@@ -100,7 +106,7 @@ Full reference: `v5/docs/API.md`; architecture:
 The entries below preserve the release history of the former server. That
 implementation and its dedicated documentation have been removed from this
 repository; older `Unreleased` headings below refer to that legacy release
-stream, not to the current 1.0.0 server.
+stream, not to the current 1.0.2 server.
 
 ## v4.0.1 — 2026-05-03
 

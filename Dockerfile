@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# ews-mcp 1.0.0 — multi-stage, non-root from the start, import-gated build.
+# ews-mcp 1.0.2 — multi-stage, non-root from the start, import-gated build.
 
 FROM python:3.11-slim AS builder
 WORKDIR /src

@@ -1,3 +1,3 @@
-"""ews-mcp 1.0.1 package — architecture in docs/DESIGN.md."""
+"""ews-mcp 1.0.2 package — architecture in docs/DESIGN.md."""
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
