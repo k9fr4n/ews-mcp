@@ -158,8 +158,7 @@ class DiagnosticFaultTolerance(FaultTolerance):
             )
         else:
             logger.warning(
-                "EWS retry backoff: requested_backoff_s=%s max_wait_s=%s "
-                "backoff_origin=%s %s",
+                "EWS retry backoff: requested_backoff_s=%s max_wait_s=%s backoff_origin=%s %s",
                 effective_seconds,
                 self.max_wait,
                 origin,
