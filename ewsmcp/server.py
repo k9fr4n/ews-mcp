@@ -130,7 +130,7 @@ async def start_connection_manager(ctx: Context) -> None:
 
 
 def build_mcp_server(ctx: Context) -> Server:
-    server = Server("ews-mcp-v5")
+    server = Server("ews-mcp")
 
     @server.list_tools()
     async def list_tools() -> List[Tool]:

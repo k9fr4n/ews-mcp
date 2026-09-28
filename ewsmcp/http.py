@@ -1,4 +1,4 @@
-"""HTTP serving: Streamable HTTP /mcp + REST shim + health (DESIGN.md §Transports)."""
+"""HTTP serving: Streamable HTTP /mcp + REST shim + health (docs/DESIGN.md §Transports)."""
 
 import hmac
 import json
@@ -121,7 +121,7 @@ def _openapi(ctx) -> Dict[str, Any]:
         }
     return {
         "openapi": "3.0.3",
-        "info": {"title": "ews-mcp v5", "version": __version__},
+        "info": {"title": "ews-mcp", "version": __version__},
         "paths": paths,
     }
 

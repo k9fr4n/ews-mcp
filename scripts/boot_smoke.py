@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v5 boot smoke: never-exit contract end-to-end, no Exchange needed.
+"""Boot smoke: never-exit contract end-to-end, no Exchange needed.
 
 Boots the real HTTP server against an unreachable Exchange and asserts:
 process survives; /livez + /health 200; /readyz 503 state=connecting;
@@ -8,7 +8,7 @@ upstream_unavailable; send-class refusal carries the kill_switch code
 (policy beats connectivity); /openapi.json publishes confirm_token for
 send_draft; tier filtering shrinks the registry.
 
-Run from v5/:  python scripts/boot_smoke.py [draft|full]
+Run from the repository root:  python scripts/boot_smoke.py [draft|full]
 """
 
 import json
@@ -21,7 +21,7 @@ import urllib.request
 
 PORT = 8124
 BASE = f"http://127.0.0.1:{PORT}"
-KEY = "v5-smoke-key"
+KEY = "ews-mcp-smoke-key"
 
 
 def _req(method, path, payload=None, timeout=8):
@@ -54,7 +54,7 @@ def main() -> int:
             "EWS_CAPABILITY_TIER": tier,
             "REQUEST_TIMEOUT": "3",
             "LOG_LEVEL": "WARNING",
-            "DATA_DIR": os.path.join(os.environ.get("TEMP", "/tmp"), "v5-smoke-data"),
+            "DATA_DIR": os.path.join(os.environ.get("TEMP", "/tmp"), "ews-mcp-smoke-data"),
             "PYTHONPATH": os.getcwd(),
         }
     )
@@ -124,7 +124,7 @@ def main() -> int:
             for f in failures:
                 print(" -", f)
             return 1
-        print(f"OK: v5 boot smoke passed (tier={tier}, tools={tools})")
+        print(f"OK: boot smoke passed (tier={tier}, tools={tools})")
         return 0
     finally:
         proc.terminate()

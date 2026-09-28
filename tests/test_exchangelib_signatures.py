@@ -3,7 +3,7 @@
 The v3 tree learned this the hard way: MagicMock accepts any kwarg, so a
 renamed/removed parameter sails through unit tests and detonates in
 production (`disposal_type`, `OofReply`, …). Every kwarg-bearing call site
-in v5/ewsmcp pins the REAL `inspect.signature` here, and the lies that
+in ewsmcp pins the REAL `inspect.signature` here, and the lies that
 drove the Phase B criticals are pinned as behavior contracts:
 
 - ``Q(conversation_id=<str>)`` raises TypeError — the ConversationId
@@ -130,7 +130,7 @@ PINS = {
 def test_signature_pin(func):
     assert _params(func) == PINS[func], (
         f"exchangelib changed {func.__qualname__} — update the call sites "
-        "in v5/ewsmcp together with this pin"
+        "in ewsmcp together with this pin"
     )
 
 

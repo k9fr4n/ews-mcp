@@ -1,7 +1,7 @@
-# Publish the v5 image to GHCR on v4.5.* tags — gated on the FULL v5 test
+# Publish the image to GHCR on v4.5.* tags — gated on the FULL test
 # workflow (no continue-on-error anywhere). NEVER tags :latest — promotion
 # of :latest is a deliberate manual act after the canary ladder completes.
-name: v5-publish
+name: publish
 
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository }}
@@ -13,7 +13,7 @@ on:
 
 jobs:
   tests:
-    uses: ./.github/workflows/v5-tests.yml
+    uses: ./.github/workflows/tests.yml
 
   publish:
     needs: tests
@@ -39,8 +39,8 @@ jobs:
           echo "line=${IMAGE_NAME}:v4.5" >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@v6
         with:
-          context: v5
-          file: v5/Dockerfile
+          context: .
+          file: Dockerfile
           push: true
           # The exact tag is what the NAS canary pins; :v4.5 tracks the line.
           tags: |

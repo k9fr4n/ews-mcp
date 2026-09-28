@@ -30,7 +30,7 @@ below (§Tools, §Safety, §Ids, §DTOs, §Errors, §Transports, §Audit, §Cach
 
 ## §Tools — the surface
 
-Four packs (see the generated table in `docs/API.md`):
+Four packs (see the generated table in `API.md`):
 
 - **mail-read** (6): `list_folders`, `search_messages`, `get_message`,
   `get_thread`, `get_attachment`, `get_mailbox_overview`.

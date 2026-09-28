@@ -1,9 +1,9 @@
-"""AST sentinel: no ``exchangelib`` imports inside function bodies in v5.
+"""AST sentinel: no ``exchangelib`` imports inside function bodies in ewsmcp.
 
 Lifted from the v3 sentinel (two production outages: a lazy ``OofReply``
 and a lazy ``FileAttachment`` import each failed only at CALL time after
 an exchangelib upgrade, because unit tests patched the same lazy path).
-v5 policy is stricter: NO exemptions — every exchangelib import lives at
+The policy is strict: NO exemptions — every exchangelib import lives at
 module top where a removed symbol fails at import/collection time.
 """
 
@@ -41,7 +41,7 @@ def _function_scope_imports(tree: ast.AST):
                 yield node.lineno, inside, node
 
 
-def test_no_lazy_exchangelib_imports_in_v5():
+def test_no_lazy_exchangelib_imports():
     offenders: list[str] = []
     for path in PKG_ROOT.rglob("*.py"):
         if "__pycache__" in path.parts:
@@ -58,5 +58,5 @@ def test_no_lazy_exchangelib_imports_in_v5():
     if offenders:
         pytest.fail(
             "Lazy exchangelib imports inside function bodies (NO exemptions "
-            "in v5 — hoist to module top):\n  " + "\n  ".join(offenders)
+            "in ewsmcp — hoist to module top):\n  " + "\n  ".join(offenders)
         )

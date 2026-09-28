@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Verify the v5 audit log's hash chain (ported from the v3.5 verifier).
+"""Verify the audit log's hash chain (ported from the v3.5 verifier).
 
-v5 records are JSONL: one object per tool call carrying ``seq``, ``prev``
+Records are JSONL: one object per tool call carrying ``seq``, ``prev``
 (first 12 chars of the previous full hash) and ``h`` where
 ``h = sha256(prev_full_hash | canonical)`` and ``canonical`` is the record
 JSON-serialized with sorted keys and WITHOUT the ``h`` field. The chain

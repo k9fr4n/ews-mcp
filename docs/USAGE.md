@@ -6,9 +6,8 @@ ids, token-lean DTOs, a local cache mirror with Arabic-correct full-text
 search, and a two-phase confirm flow that makes autonomous sending
 tamper-evident.
 
-> The `v5/` directory name is an internal path; the release line is
-> **4.5.x** (`ghcr.io/k9fr4n/ews-mcp:v4.5*`). Architecture: [DESIGN.md](DESIGN.md).
-> Full API reference: [docs/API.md](docs/API.md).
+> The current release line is **4.5.x** (`ghcr.io/k9fr4n/ews-mcp:v4.5*`).
+> Architecture: [DESIGN](DESIGN.md). Full API reference: [API](API.md).
 
 ## Quick start — run it locally over stdio (no Docker)
 
@@ -28,7 +27,7 @@ route.
 git clone https://github.com/k9fr4n/ews-mcp.git && cd ews-mcp
 python -m venv .venv
 source .venv/bin/activate        # Windows PowerShell: .venv\Scripts\Activate.ps1
-pip install ./v5
+pip install .
 ```
 
 You now have an `ewsmcp` command inside the venv:
@@ -69,7 +68,7 @@ On Windows, write it on one line and point at `ewsmcp.exe`. Check with
 ```
 
 Any other MCP client works the same way: command = the `ewsmcp` path,
-credentials in `env`. Prefer a file? Copy [`.env.example`](.env.example)
+credentials in `env`. Prefer a file? Copy [`.env.example`](../.env.example)
 to `.env` in the directory you launch `ewsmcp` from — it auto-loads.
 
 That is the whole setup. The defaults are safe: capability tier `draft`
@@ -240,7 +239,7 @@ python scripts/boot_smoke.py full  # end-to-end boot against a dead endpoint
 python scripts/dump_tool_table.py --check   # docs vs registry drift gate
 ```
 
-The v5 CI coverage gate measures **line coverage in `ewsmcp` only**; it does
+The CI coverage gate measures **line coverage in `ewsmcp` only**; it does
 not contact Exchange. The initial blocking floor is **79.1993%**, the measured
 baseline from 2,730 covered of 3,447 executable statements (79.1993037%, rounded
 to four decimal places). No source files are omitted and no custom coverage

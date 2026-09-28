@@ -1,4 +1,4 @@
-"""Tool pack: writes — the 12 mutating tools (DESIGN.md §Tools, §Safety).
+"""Tool pack: writes — the 12 mutating tools (docs/DESIGN.md §Tools, §Safety).
 
 Safety lives in the dispatcher (tools/base.py): kill-switch, tier gate,
 recipient guard, two-phase confirm, send rate cap and alias resolution all
@@ -74,7 +74,7 @@ _OOF_STATE = {
     "scheduled": OofSettings.SCHEDULED,
 }
 
-# --- send_draft idempotency (DESIGN.md §Safety, Stripe semantics) ---------------
+# --- send_draft idempotency (docs/DESIGN.md §Safety, Stripe semantics) ----------
 # Bounded: entries expire after 48h and the store caps at 512 keys (oldest
 # evicted first) so a long-lived process can't grow it without limit.
 _IDEMPOTENT_SENDS: Dict[str, Dict[str, Any]] = {}
@@ -396,7 +396,7 @@ async def _move_messages(ctx: Context, *, ids: List[str], to_folder: str) -> Dic
                 alias = None
                 if new_raw and new_raw != raw_id:
                     # EWS ids change on move — rebind so the model's alias
-                    # keeps working (DESIGN.md §Ids).
+                    # keeps working (docs/DESIGN.md §Ids).
                     alias = ctx.aliaser.rebind(raw_id, new_raw)
                 if alias is None:
                     alias = ctx.aliaser.alias_for(new_raw or raw_id, "m")
