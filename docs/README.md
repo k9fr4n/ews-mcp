@@ -1,8 +1,8 @@
 # Documentation map
 
-This repository contains one server implementation, published as version 4.5.x.
+This repository contains one server implementation, published as version 1.0.0.
 
-## Server (`ghcr.io/k9fr4n/ews-mcp:v4.5*`)
+## Server (`ghcr.io/k9fr4n/ews-mcp:v1.0.0`)
 
 | Document | What it covers |
 |---|---|

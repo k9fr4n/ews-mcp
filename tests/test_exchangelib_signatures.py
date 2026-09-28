@@ -1,4 +1,4 @@
-"""Signature + behavior pins for every exchangelib API v5 calls.
+"""Signature + behavior pins for the exchangelib APIs used by the server.
 
 The v3 tree learned this the hard way: MagicMock accepts any kwarg, so a
 renamed/removed parameter sails through unit tests and detonates in

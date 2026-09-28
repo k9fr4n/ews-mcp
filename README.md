@@ -15,7 +15,7 @@
 
 ## The server
 
-This repository contains one implementation, published as version **4.5.x**.
+This repository contains one implementation, published as version **1.0.0**.
 It provides a consolidated 28-tool
 surface, short alias IDs, token-lean responses, a cache-first local mirror
 with Arabic-correct full-text search, and centralized safety gates.
@@ -55,7 +55,7 @@ When the server runs on a host that can reach Exchange directly:
 cp .env.example .env
 # Pin an exact release tag.
 docker run -d --name ews-mcp -p 8000:8000 --env-file .env \
-  -v ewsmcp-data:/data ghcr.io/k9fr4n/ews-mcp:v4.5.0a1
+  -v ewsmcp-data:/data ghcr.io/k9fr4n/ews-mcp:v1.0.0
 ```
 
 The server serves Streamable HTTP at `/mcp`, plain REST at
@@ -116,7 +116,7 @@ python scripts/dump_tool_table.py --check   # docs ↔ registry drift gate
 
 CI: `tests` (blocking Ruff + tests on 3.11/3.12 + boot smokes + Docker
 import smoke) runs on pushes and pull requests; `publish` builds
-`ghcr.io/k9fr4n/ews-mcp:v4.5*` from tags `v4.5.*`, gated on the full test job.
+`ghcr.io/k9fr4n/ews-mcp:v1*` from tags `v1.*`, gated on the full test job.
 The workflow derives its image namespace from this GitHub repository.
 After the first successful publication, set the GHCR package's visibility
 to **Public** in the package settings if anonymous pulls are intended;

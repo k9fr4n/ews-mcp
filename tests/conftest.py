@@ -1,4 +1,4 @@
-"""v5 test fixtures: import path + per-test alias-store isolation."""
+"""Test fixtures: import path + per-test alias-store isolation."""
 
 import sys
 from pathlib import Path

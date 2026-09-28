@@ -935,7 +935,7 @@ TOOLS: List[ToolSpec] = [
             "Delete up to 50 messages. disposition: 'trash' (default, "
             "recoverable), 'soft' (dumpster) or 'permanent' (UNRECOVERABLE — "
             "requires two-phase confirm). Class is destructive, so ALL "
-            "dispositions need the full tier in v5.0 (conservative)."
+            "dispositions need the full tier in this release (conservative)."
         ),
         side_effect_class="destructive",
         input_schema=_obj(

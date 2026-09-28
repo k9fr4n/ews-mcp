@@ -40,7 +40,7 @@ class Settings(BaseSettings):
 
     # --- Safety -------------------------------------------------------------
     ews_capability_tier: Literal["read", "draft", "full"] = "draft"
-    send_enabled: bool = False  # kill-switch: v5 defaults SAFE (off)
+    send_enabled: bool = False  # kill-switch defaults SAFE (off)
     send_confirm_secret: Optional[str] = None
     confirm_ttl_seconds: int = 600  # ONE default everywhere (== confirm.DEFAULT_TTL_SECONDS)
     ews_recipient_allowlist: str = ""

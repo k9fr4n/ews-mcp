@@ -7,7 +7,7 @@
 
 services:
   ews-mcp-canary:
-    # Pin the EXACT immutable tag (e.g. v4.5.0a1). Never :latest, never a
+    # Pin the EXACT immutable tag (e.g. v1.0.0). Never :latest, never a
     # floating pull policy — deploys must be deliberate.
     image: ${EWS_MCP_IMAGE:?set EWS_MCP_IMAGE to the exact pinned image ref}
     container_name: ews-mcp-canary

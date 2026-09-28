@@ -1,4 +1,4 @@
-# API reference — ews-mcp 4.5
+# API reference — ews-mcp 1.0.0
 
 The tool table below is **generated from the registry** by
 `scripts/dump_tool_table.py` (`--write` to refresh, `--check` in CI) —
@@ -343,7 +343,7 @@ Cancel a meeting you organize — sends cancellations to all attendees (destruct
 
 #### `delete_messages` — destructive (min tier: full)
 
-Delete up to 50 messages. disposition: 'trash' (default, recoverable), 'soft' (dumpster) or 'permanent' (UNRECOVERABLE — requires two-phase confirm). Class is destructive, so ALL dispositions need the full tier in v5.0 (conservative).
+Delete up to 50 messages. disposition: 'trash' (default, recoverable), 'soft' (dumpster) or 'permanent' (UNRECOVERABLE — requires two-phase confirm). Class is destructive, so ALL dispositions need the full tier in this release (conservative).
 
 > Two-phase confirm for some argument combinations: the first call returns a preview + `confirm_token`; repeat the call with the token to execute.
 
@@ -443,9 +443,9 @@ Reads served by the local mirror carry `source: "cache"` and `as_of`
 size and sync health. `mode: "semantic"` on `search_messages` (and the
 `find_similar` tool) exist only when `EWS_SEMANTIC_INDEX` is enabled.
 
-## v3 → 4.5 tool rename map
+## Legacy v3 → current tool rename map
 
-| v3 (67-tool surface) | 4.5 |
+| v3 (67-tool surface) | Current API |
 |---|---|
 | `read_emails` / `search_emails` / `advanced_search` | `search_messages` |
 | `get_email_details` | `get_message` |

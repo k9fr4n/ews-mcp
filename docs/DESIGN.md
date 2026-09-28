@@ -1,4 +1,4 @@
-# Design — ews-mcp v5 (release line 4.5.x)
+# Design — ews-mcp 1.0.0
 
 The architecture the code enforces. Module docstrings cite the sections
 below (§Tools, §Safety, §Ids, §DTOs, §Errors, §Transports, §Audit, §Cache).
@@ -142,7 +142,7 @@ link and catches edits, deletions and truncation.
 
 - `test_exchangelib_signatures.py`: signature pins for every
   kwarg-bearing exchangelib call + behavior contracts for the three lies
-  that caused the v5 criticals (string `conversation_id` raises; stored
+  that caused the pre-release criticals (string `conversation_id` raises; stored
   `total_count` is not a probe; the protocol cache must be evictable).
 - AST sentinel: no exchangelib imports inside function bodies, no
   exemptions.
