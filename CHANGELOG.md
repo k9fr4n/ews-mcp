@@ -3,25 +3,19 @@
 ## [Unreleased]
 
 ### CI
-- Format the existing v5 codebase with Ruff and enforce formatting with a
-  blocking, non-mutating `ruff format --check v5` workflow step. The legacy
-  4.0 source remains outside this check. Pin the existing lint rule selection
-  explicitly so newer Ruff releases do not silently expand it.
+- Enforce Ruff formatting with a blocking, non-mutating
+  `ruff format --check v5` workflow step. Pin the lint rule selection so
+  newer Ruff releases do not silently expand it.
 
 ### Documentation
 - Repository-wide revamp: the root README is now a single front door
-  (version guide, stdio-first quick start); `docs/README.md` maps all
-  documentation; the ten 4.0-era documents moved to `docs/legacy/` with
-  banners; `v5/docs/API.md` gained a generated per-tool parameter
-  reference (`dump_tool_table.py` now emits and drift-checks it).
+  (single-server guide, stdio-first quick start); `docs/README.md` maps the
+  V5 documentation; `v5/docs/API.md` contains the generated per-tool
+  parameter reference (`dump_tool_table.py` emits and drift-checks it).
 
 ### Removed
-- Legacy helper scripts (`run.sh`, `scripts/build.sh`,
-  `scripts/deploy.sh`, `scripts/setup.sh`,
-  `scripts/setup-basic-auth.sh`) and redundant configuration examples
-  (`.env.basic.example`, `.env.oauth2.example`, `.env.ai.example`).
-  One template per line remains: root `.env.example` (4.0) and
-  `v5/.env.example` (4.5).
+- Removed the legacy server implementation and its dedicated documentation,
+  configuration, and Docker workflows. This repository now contains only V5.
 
 ## [4.5.0a1] - 2026-07-11 (pre-release; the `v5/` tree)
 
