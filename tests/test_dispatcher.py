@@ -103,6 +103,27 @@ def test_cold_gate_passes_local_tools(tmp_path):
     assert result.get("ran") is True
 
 
+class _AuthFailedManager:
+    state = "auth_failed"
+
+    def status(self):
+        return {
+            "state": "auth_failed",
+            "attempts": 1,
+            "last_error": "UnauthorizedError: Invalid credentials",
+            "next_retry_in_s": None,
+            "last_success_age_s": None,
+        }
+
+
+def test_cold_gate_surfaces_auth_failed(tmp_path):
+    ctx = _ctx(tmp_path)
+    ctx.manager = _AuthFailedManager()
+    result = asyncio.run(dispatch(ctx, _spec(_ok_handler), {}))
+    assert result["error"]["code"] == "auth_failed"
+    assert "credentials" in result["error"]["message"]
+
+
 # --- two-phase confirm -------------------------------------------------------
 
 

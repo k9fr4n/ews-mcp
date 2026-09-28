@@ -336,15 +336,23 @@ async def dispatch(
                 retry_after_s=int(ctx._circuit_open_until - now),
             )
         # Cold gate
-        if spec.requires_ews and ctx.manager is not None and ctx.manager.state == "connecting":
+        if spec.requires_ews and ctx.manager is not None:
             st = ctx.manager.status()
-            raise ToolError(
-                "upstream_unavailable",
-                f"Exchange connection still warming up (attempt {st['attempts']}; "
-                f"last error: {st['last_error'] or 'none yet'})",
-                hint="Check /readyz or call get_server_status.",
-                retry_after_s=st.get("next_retry_in_s"),
-            )
+            if ctx.manager.state == "auth_failed":
+                raise ToolError(
+                    "auth_failed",
+                    f"Exchange rejected the mailbox credentials "
+                    f"({st['last_error'] or 'authentication failed'})",
+                    hint="Check X-EWS-Email / X-EWS-Password / X-EWS-Username.",
+                )
+            if ctx.manager.state == "connecting":
+                raise ToolError(
+                    "upstream_unavailable",
+                    f"Exchange connection still warming up (attempt {st['attempts']}; "
+                    f"last error: {st['last_error'] or 'none yet'})",
+                    hint="Check /readyz or call get_server_status.",
+                    retry_after_s=st.get("next_retry_in_s"),
+                )
         # Recipient policy — every tool whose arguments carry recipients
         # (create_draft/update_draft/create_event/…), not just send class:
         # drafts and events are how mail actually acquires recipients.
