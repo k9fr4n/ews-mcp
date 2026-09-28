@@ -15,12 +15,12 @@
 
 ## The server
 
-This repository contains one implementation: the **V5 server**, published
-as version **4.5.x** from [`v5/`](v5/). It provides a consolidated 28-tool
+This repository contains one implementation, published as version **1.0.0**.
+It provides a consolidated 28-tool
 surface, short alias IDs, token-lean responses, a cache-first local mirror
 with Arabic-correct full-text search, and centralized safety gates.
 
-## Quick start — V5 locally over stdio
+## Quick start — locally over stdio
 
 No Docker needed. The MCP client starts the server as a child process;
 it inherits your machine's network (VPNs included), and nothing listens
@@ -30,7 +30,7 @@ on any port.
 git clone https://github.com/k9fr4n/ews-mcp.git && cd ews-mcp
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
-pip install ./v5
+pip install .
 ```
 
 Then register it with Claude Code:
@@ -44,7 +44,7 @@ claude mcp add exchange \
 ```
 
 Claude Desktop and other clients: same command + env in a config block —
-see the [V5 quick start](v5/README.md#quick-start--run-it-locally-over-stdio-no-docker).
+see the [full usage guide](docs/USAGE.md#quick-start--run-it-locally-over-stdio-no-docker).
 Defaults are safe: `draft` tier, sending disabled.
 
 ## Docker / HTTP (server deployments)
@@ -52,16 +52,16 @@ Defaults are safe: `draft` tier, sending disabled.
 When the server runs on a host that can reach Exchange directly:
 
 ```bash
-cp v5/.env.example .env
-# Pin an exact V5 release tag.
-docker run -d --name ews-mcp-v5 -p 8000:8000 --env-file .env \
-  -v ewsmcp-data:/data ghcr.io/k9fr4n/ews-mcp:v4.5.0a1
+cp .env.example .env
+# Pin an exact release tag.
+docker run -d --name ews-mcp -p 8000:8000 --env-file .env \
+  -v ewsmcp-data:/data ghcr.io/k9fr4n/ews-mcp:v1.0.0
 ```
 
 The server serves Streamable HTTP at `/mcp`, plain REST at
 `/api/tools/<name>`, and health at `/livez`, `/readyz`, and `/health`.
 For a shared HTTP deployment serving multiple mailboxes with per-request
-Exchange credentials, see the [multi-tenant HTTP setup](v5/README.md#multi-tenant-http-mode).
+Exchange credentials, see the [multi-tenant HTTP setup](docs/USAGE.md#multi-tenant-http-mode).
 
 ## What the assistant can do
 
@@ -81,7 +81,7 @@ Exchange credentials, see the [multi-tenant HTTP setup](v5/README.md#multi-tenan
 
 The complete, generated reference — every tool with its parameters,
 envelope, error codes, and historical rename map — is
-[`v5/docs/API.md`](v5/docs/API.md).
+[`docs/API.md`](docs/API.md).
 
 ## The safety model
 
@@ -99,24 +99,24 @@ envelope, error codes, and historical rename map — is
 | | |
 |---|---|
 | [`docs/README.md`](docs/README.md) | Documentation map |
-| [`v5/README.md`](v5/README.md) | Install & use: stdio, HTTP, Docker, configuration |
-| [`v5/docs/API.md`](v5/docs/API.md) | API reference (generated from the registry) |
-| [`v5/DESIGN.md`](v5/DESIGN.md) | Architecture and rationale |
+| [`docs/USAGE.md`](docs/USAGE.md) | Install & use: stdio, HTTP, Docker, configuration |
+| [`docs/API.md`](docs/API.md) | API reference (generated from the registry) |
+| [`docs/DESIGN.md`](docs/DESIGN.md) | Architecture and rationale |
 | [`examples/skills/exchange-assistant/`](examples/skills/exchange-assistant/) | Example assistant skill on top of the tool surface |
 
 ## Development
 
 ```bash
-pip install -e './v5[dev]'
-python -m pytest v5/tests -q            # full suite — no Exchange needed
-python -m ruff check v5
-python v5/scripts/boot_smoke.py full    # end-to-end boot, dead endpoint
-python v5/scripts/dump_tool_table.py --check   # docs ↔ registry drift gate
+pip install -e '.[dev]'
+python -m pytest -q                     # full suite — no Exchange needed
+python -m ruff check .
+python scripts/boot_smoke.py full       # end-to-end boot, dead endpoint
+python scripts/dump_tool_table.py --check   # docs ↔ registry drift gate
 ```
 
-CI: `v5-tests` (blocking Ruff + tests on 3.11/3.12 + boot smokes + Docker
-import smoke) runs on pushes and pull requests; `v5-publish` builds
-`ghcr.io/k9fr4n/ews-mcp:v4.5*` from tags `v4.5.*`, gated on the full test job.
+CI: `tests` (blocking Ruff + tests on 3.11/3.12 + boot smokes + Docker
+import smoke) runs on pushes and pull requests; `publish` builds
+`ghcr.io/k9fr4n/ews-mcp:v1*` from tags `v1.*`, gated on the full test job.
 The workflow derives its image namespace from this GitHub repository.
 After the first successful publication, set the GHCR package's visibility
 to **Public** in the package settings if anonymous pulls are intended;
@@ -125,8 +125,11 @@ GitHub Actions does not change package visibility automatically.
 ## Repository layout
 
 ```
-v5/            the V5 server (package `ews-mcp`, entry point `ewsmcp`)
-docs/          documentation map
+ewsmcp/        server package
+tests/         unit and contract tests
+scripts/       smoke, documentation, and operations utilities
+docs/          usage, API, and architecture documentation
+deploy/        deployment examples
 examples/      example assistant skill
 ```
 

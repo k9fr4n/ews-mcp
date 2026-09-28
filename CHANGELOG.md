@@ -2,27 +2,37 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-28
+
 ### CI
 - Enforce Ruff formatting with a blocking, non-mutating
-  `ruff format --check v5` workflow step. Pin the lint rule selection so
+  `ruff format --check .` workflow step. Pin the lint rule selection so
   newer Ruff releases do not silently expand it.
 
 ### Documentation
 - Repository-wide revamp: the root README is now a single front door
   (single-server guide, stdio-first quick start); `docs/README.md` maps the
-  V5 documentation; `v5/docs/API.md` contains the generated per-tool
+  server documentation; `docs/API.md` contains the generated per-tool
   parameter reference (`dump_tool_table.py` emits and drift-checks it).
 
 ### Removed
 - Removed the legacy server implementation and its dedicated documentation,
-  configuration, and Docker workflows. This repository now contains only V5.
+  configuration, and Docker workflows. This repository now contains one
+  server implementation.
+
+### Versioning
+- First stable release of the single-server code line. The Python package
+  and container image use the same version (`1.0.0` / `v1.0.0`); the `v1`
+  image tag tracks the major release line. The publishing workflow verifies
+  that a release tag matches the package metadata.
 
 ## [4.5.0a1] - 2026-07-11 (pre-release; the `v5/` tree)
 
 The greenfield server (`v5/ewsmcp`, package `ews-mcp` 4.5.0a1) reaches
 alpha: consolidated 28-tool surface, alias-only ids, token-lean DTOs, and
-a cache-first local mirror. Ships side-by-side with v3 — nothing in
-`src/` changes. Full reference: `v5/docs/API.md`; architecture:
+a cache-first local mirror. At this release it shipped side-by-side with
+v3; the legacy implementation was removed later (see Unreleased below).
+Full reference: `v5/docs/API.md`; architecture:
 `v5/DESIGN.md`.
 
 ### Fixed (v5 pre-release criticals)
@@ -71,6 +81,13 @@ a cache-first local mirror. Ships side-by-side with v3 — nothing in
 - `update_messages.set_flag` removed from the schema (the backend has no
   first-class flag field; categories are the marker).
 - `search_messages.from_` deprecated in favor of `sender`.
+
+## Historical changelog — removed v3/v4 implementation
+
+The entries below preserve the release history of the former server. That
+implementation and its dedicated documentation have been removed from this
+repository; older `Unreleased` headings below refer to that legacy release
+stream, not to the current 1.0.0 server.
 
 ## v4.0.1 — 2026-05-03
 
@@ -641,8 +658,8 @@ tests/test_bug_fixes.py      (+330, new)
 
 Adds a persistent, per-mailbox state layer and 24 new MCP tools that
 turn the server from a stateless Exchange client into an **agentic
-secretary**. See [`docs/AGENT_SECRETARY.md`](docs/AGENT_SECRETARY.md) for
-the full guide.
+secretary**. The original guide was `docs/AGENT_SECRETARY.md`; it was part
+of the removed legacy documentation and is no longer present here.
 
 ### New infrastructure
 

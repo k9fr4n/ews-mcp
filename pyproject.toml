@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ews-mcp"
+version = "1.0.0"
+description = "EWS MCP server — a lean, safety-gated, cache-first tool surface for an executive-mailbox assistant (see docs/DESIGN.md)"
+requires-python = ">=3.11"
+dependencies = [
+    "exchangelib==5.0.3",
+    "jsonschema>=4.21",
+    "mcp>=1.27,<2",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.5",
+    "tzdata",  # zoneinfo source of truth: slim images/Windows ship no OS tzdb
+    "uvicorn>=0.30",
+]
+
+[project.urls]
+Repository = "https://github.com/k9fr4n/ews-mcp"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=6.3",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+ewsmcp = "ewsmcp.main:main"
+
+[tool.setuptools.packages.find]
+include = ["ewsmcp*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "strict"
+
+[tool.coverage.report]
+precision = 4
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

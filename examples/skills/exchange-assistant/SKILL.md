@@ -1,7 +1,7 @@
 ---
 name: exchange-assistant
 description: >
-  Generic example of composing the ews-mcp 4.5 tool surface into a daily
+  Generic example of composing the ews-mcp 1.0.0 tool surface into a daily
   mailbox routine: morning overview, triage, and a reply drafted through
   the two-phase confirm flow. Use as a template — real assistants add
   their own judgment, tone and priorities on top of these calls.
