@@ -83,6 +83,16 @@ The complete, generated reference — every tool with its parameters,
 envelope, error codes, and historical rename map — is
 [`docs/API.md`](docs/API.md).
 
+## MCP prompts
+
+Beyond tools, the server exposes six ready-made prompts (`prompts/list` /
+`prompts/get`, available over stdio and HTTP) that clients can offer as
+slash commands: `morning-brief`, `health-check`, `draft-reply`,
+`schedule-meeting`, `set-away-message`, and `send-draft-checklist`. Each
+one chains a fixed sequence of the tools above and is tier-filtered the
+same way tools are — a `read`-tier deployment only sees the two read-only
+prompts. See [`docs/PROMPTS.md`](docs/PROMPTS.md) for the full reference.
+
 ## The safety model
 
 | Mechanism | What it does |
@@ -101,6 +111,7 @@ envelope, error codes, and historical rename map — is
 | [`docs/README.md`](docs/README.md) | Documentation map |
 | [`docs/USAGE.md`](docs/USAGE.md) | Install & use: stdio, HTTP, Docker, configuration |
 | [`docs/API.md`](docs/API.md) | API reference (generated from the registry) |
+| [`docs/PROMPTS.md`](docs/PROMPTS.md) | The 6 MCP prompts (slash-command templates) and their tier filtering |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Architecture and rationale |
 | [`examples/skills/exchange-assistant/`](examples/skills/exchange-assistant/) | Example assistant skill on top of the tool surface |
 
