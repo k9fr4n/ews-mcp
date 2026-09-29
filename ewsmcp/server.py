@@ -5,13 +5,22 @@ from contextvars import ContextVar
 from typing import Any, Dict, List
 
 from mcp.server import Server
-from mcp.types import Tool, ToolAnnotations
+from mcp.types import (
+    GetPromptResult,
+    Prompt,
+    PromptArgument,
+    PromptMessage,
+    TextContent,
+    Tool,
+    ToolAnnotations,
+)
 
 from .audit import AuditLog
 from .config import Settings
 from .gateway.client import EWSGateway
 from .gateway.connection import ConnectionManager
 from .ids import NullAliaser, get_aliaser
+from .prompts import build_prompt_registry
 from .tools import build_registry
 from .tools.base import Context, dispatch
 
@@ -95,6 +104,7 @@ def build_context(settings: Settings, tenant_id: str = "") -> Context:
         tenant_id=tenant_id or None,
     )
     build_registry(ctx)
+    ctx.prompt_registry = build_prompt_registry(settings.ews_capability_tier)
     return ctx
 
 
@@ -161,6 +171,37 @@ def build_mcp_server(ctx: Context) -> Server:
                 },
             }
         return await dispatch(active_ctx, spec, dict(arguments or {}), transport="mcp")
+
+    @server.list_prompts()
+    async def list_prompts() -> List[Prompt]:
+        active_ctx = ACTIVE_CONTEXT.get() or ctx
+        prompts = []
+        for spec in active_ctx.prompt_registry.values():
+            prompts.append(
+                Prompt(
+                    name=spec.name,
+                    title=spec.title,
+                    description=spec.description,
+                    arguments=[
+                        PromptArgument(name=a.name, description=a.description, required=a.required)
+                        for a in spec.arguments
+                    ],
+                )
+            )
+        return prompts
+
+    @server.get_prompt()
+    async def get_prompt(name: str, arguments: Dict[str, str] | None) -> GetPromptResult:
+        active_ctx = ACTIVE_CONTEXT.get() or ctx
+        spec = active_ctx.prompt_registry.get(name)
+        if spec is None:
+            raise ValueError(f"Unknown prompt: {name}")
+        resolved = spec.resolve(arguments)  # raises ValueError on missing required args
+        text = spec.render(resolved)
+        return GetPromptResult(
+            description=spec.description,
+            messages=[PromptMessage(role="user", content=TextContent(type="text", text=text))],
+        )
 
     return server
 

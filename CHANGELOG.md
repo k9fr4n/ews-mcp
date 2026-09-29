@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- MCP prompts (`prompts/list` / `prompts/get`, stdio and HTTP): six
+  user-selected slash-command templates over the existing tool registry —
+  `morning-brief`, `health-check`, `draft-reply`, `schedule-meeting`,
+  `set-away-message`, `send-draft-checklist`. Tier-filtered like tools
+  (`ewsmcp/prompts.py`); documented in `docs/PROMPTS.md`.
+
 ## [1.0.2] - 2026-09-28
 
 ### Added

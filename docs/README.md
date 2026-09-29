@@ -8,5 +8,6 @@ This repository contains one server implementation, published as version 1.0.2.
 |---|---|
 | [`USAGE.md`](USAGE.md) | Install & use: **stdio quick start (no Docker)** for Claude Code / Claude Desktop / any MCP client, HTTP transport, Docker, full configuration reference, the send flow, health endpoints |
 | [`API.md`](API.md) | **Full API reference, generated from the registry**: every tool with parameters, the canonical envelope, id aliases, error taxonomy, two-phase confirmation, cache freshness contract, historical rename map, intentionally-dropped list |
+| [`PROMPTS.md`](PROMPTS.md) | The 6 MCP prompts (slash-command templates) built on the tool registry, and their tier filtering |
 | [`DESIGN.md`](DESIGN.md) | Architecture and rationale: dispatcher gate chain, alias store, cache mirror, body cleaning, audit chain |
 | [`examples/skills/exchange-assistant/`](../examples/skills/exchange-assistant/) | Example assistant skill composed on top of the tool surface |

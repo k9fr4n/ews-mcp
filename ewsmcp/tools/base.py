@@ -100,6 +100,7 @@ class Context:
     semantic: Any = None  # SemanticIndex adapter | None
     tenant_id: Optional[str] = None  # opaque, non-secret partition identifier
     registry: Dict[str, ToolSpec] = field(default_factory=dict)
+    prompt_registry: Dict[str, Any] = field(default_factory=dict)  # name -> PromptSpec
     started_at: float = field(default_factory=time.time)
     counters: Dict[str, int] = field(default_factory=dict)
     _circuit_failures: int = 0
