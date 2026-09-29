@@ -2,12 +2,20 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-29
+
 ### Added
 - MCP prompts (`prompts/list` / `prompts/get`, stdio and HTTP): six
   user-selected slash-command templates over the existing tool registry —
   `morning-brief`, `health-check`, `draft-reply`, `schedule-meeting`,
   `set-away-message`, `send-draft-checklist`. Tier-filtered like tools
   (`ewsmcp/prompts.py`); documented in `docs/PROMPTS.md`.
+- Three example skills alongside `exchange-assistant`, each scoped to one
+  professional workflow: `examples/skills/exchange-inbox-triage/` (morning
+  brief, unread prioritization, follow-up tracking), `examples/skills/
+  exchange-meeting-coordinator/` (availability search, two-phase confirmed
+  event responses/cancellations), and `examples/skills/exchange-safe-mail/`
+  (draft-first composition, content-bound send confirmation, out-of-office).
 
 ## [1.0.2] - 2026-09-28
 
@@ -115,7 +123,7 @@ Full reference: `v5/docs/API.md`; architecture:
 The entries below preserve the release history of the former server. That
 implementation and its dedicated documentation have been removed from this
 repository; older `Unreleased` headings below refer to that legacy release
-stream, not to the current 1.0.2 server.
+stream, not to the current 1.1.0 server.
 
 ## v4.0.1 — 2026-05-03
 

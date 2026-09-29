@@ -1,7 +1,7 @@
 ---
 name: exchange-meeting-coordinator
 description: >
-  Calendar scheduling on top of the ews-mcp 1.0.2 tool surface: finding
+  Calendar scheduling on top of the ews-mcp 1.1.0 tool surface: finding
   slots that work for every attendee, creating and adjusting events
   without spamming invitees, and handling meeting responses/cancellations
   through the required two-phase confirm. Use when the user wants a

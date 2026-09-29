@@ -1,4 +1,4 @@
-# API reference — ews-mcp 1.0.2
+# API reference — ews-mcp 1.1.0
 
 The tool table below is **generated from the registry** by
 `scripts/dump_tool_table.py` (`--write` to refresh, `--check` in CI) —

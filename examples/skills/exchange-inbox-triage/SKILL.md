@@ -1,7 +1,7 @@
 ---
 name: exchange-inbox-triage
 description: >
-  Daily inbox triage on top of the ews-mcp 1.0.2 tool surface: morning
+  Daily inbox triage on top of the ews-mcp 1.1.0 tool surface: morning
   overview, prioritized unread sweep, follow-up tracking (waiting_on),
   and light hygiene (read/categorize/move) — without ever touching a
   send-class tool. Use when the user wants their inbox summarized,
