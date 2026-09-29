@@ -114,6 +114,9 @@ prompts. See [`docs/PROMPTS.md`](docs/PROMPTS.md) for the full reference.
 | [`docs/PROMPTS.md`](docs/PROMPTS.md) | The 6 MCP prompts (slash-command templates) and their tier filtering |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Architecture and rationale |
 | [`examples/skills/exchange-assistant/`](examples/skills/exchange-assistant/) | Example assistant skill on top of the tool surface |
+| [`examples/skills/exchange-inbox-triage/`](examples/skills/exchange-inbox-triage/) | Skill: morning brief, unread prioritization, follow-up tracking, read-tier hygiene |
+| [`examples/skills/exchange-meeting-coordinator/`](examples/skills/exchange-meeting-coordinator/) | Skill: availability search, event create/update, two-phase meeting responses & cancellations |
+| [`examples/skills/exchange-safe-mail/`](examples/skills/exchange-safe-mail/) | Skill: draft-first mail composition, content-bound send confirmation, out-of-office |
 
 ## Development
 
@@ -142,7 +145,7 @@ tests/         unit and contract tests
 scripts/       smoke, documentation, and operations utilities
 docs/          usage, API, and architecture documentation
 deploy/        deployment examples
-examples/      example assistant skill
+examples/      example assistant skills
 ```
 
 ## Contributing & license
