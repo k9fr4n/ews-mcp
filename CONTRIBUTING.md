@@ -6,7 +6,7 @@ and how to engage with it productively.
 ## Repository layout
 
 ```
-ewsmcp/                  server package (published as 1.1.0)
+ewsmcp/                  server package (published as 1.1.1)
 tests/                   unit and contract tests
 scripts/                 smoke, documentation, and operations utilities
 docs/                    usage, API, and architecture documentation

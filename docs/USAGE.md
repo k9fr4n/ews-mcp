@@ -1,4 +1,4 @@
-# ews-mcp 1.1.0 — Exchange (EWS) as a safe, fast MCP tool surface
+# ews-mcp 1.1.1 — Exchange (EWS) as a safe, fast MCP tool surface
 
 An MCP server that turns an on-prem Exchange mailbox into a lean,
 safety-gated tool surface for an LLM assistant: **28 tools**, alias-only
@@ -6,7 +6,7 @@ ids, token-lean DTOs, a local cache mirror with Arabic-correct full-text
 search, and a two-phase confirm flow that makes autonomous sending
 tamper-evident.
 
-> The current release is **1.1.0** (`ghcr.io/k9fr4n/ews-mcp:v1.1.0`).
+> The current release is **1.1.1** (`ghcr.io/k9fr4n/ews-mcp:v1.1.1`).
 > Architecture: [DESIGN](DESIGN.md). Full API reference: [API](API.md).
 
 ## Quick start — run it locally over stdio (no Docker)

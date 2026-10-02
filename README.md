@@ -15,7 +15,7 @@
 
 ## The server
 
-This repository contains one implementation, published as version **1.1.0**.
+This repository contains one implementation, published as version **1.1.1**.
 It provides a consolidated 28-tool
 surface, short alias IDs, token-lean responses, a cache-first local mirror
 with Arabic-correct full-text search, and centralized safety gates.
@@ -55,7 +55,7 @@ When the server runs on a host that can reach Exchange directly:
 cp .env.example .env
 # Pin an exact release tag.
 docker run -d --name ews-mcp -p 8000:8000 --env-file .env \
-  -v ewsmcp-data:/data ghcr.io/k9fr4n/ews-mcp:v1.1.0
+  -v ewsmcp-data:/data ghcr.io/k9fr4n/ews-mcp:v1.1.1
 ```
 
 The server serves Streamable HTTP at `/mcp`, plain REST at

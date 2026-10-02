@@ -48,11 +48,14 @@ jobs:
           if [[ "${{ github.event_name }}" == "push" ]]; then
             echo "latest=${IMAGE_NAME}:latest" >> "$GITHUB_OUTPUT"
           fi
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
           context: .
           file: Dockerfile
           push: true
+          platforms: linux/amd64,linux/arm64
           # Release tags are immutable; :v1 and :latest are moving aliases.
           tags: |
             ${{ steps.tags.outputs.exact }}

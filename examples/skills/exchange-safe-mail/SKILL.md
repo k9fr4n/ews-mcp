@@ -2,7 +2,7 @@
 name: exchange-safe-mail
 description: >
   Draft-first, safety-gated mail composition and sending on the ews-mcp
-  1.1.0 tool surface — including out-of-office replies. Use whenever the
+  1.1.1 tool surface — including out-of-office replies. Use whenever the
   user wants to send, reply to, or forward an email, or set an
   auto-reply: this skill enforces the draft → preview → confirm chain
   and explains every safety rejection (kill-switch, recipient guard,

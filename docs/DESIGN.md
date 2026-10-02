@@ -1,4 +1,4 @@
-# Design — ews-mcp 1.1.0
+# Design — ews-mcp 1.1.1
 
 The architecture the code enforces. Module docstrings cite the sections
 below (§Tools, §Safety, §Ids, §DTOs, §Errors, §Transports, §Audit, §Cache).

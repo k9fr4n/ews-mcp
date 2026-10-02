@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-02
+
+### Added
+- Publish the container image as a multi-arch manifest
+  (`linux/amd64`, `linux/arm64`) so the same GHCR tag runs on ARM hosts
+  (NAS, Apple Silicon) — no Dockerfile change needed.
+
 ## [1.1.0] - 2026-09-29
 
 ### Added
@@ -123,7 +130,7 @@ Full reference: `v5/docs/API.md`; architecture:
 The entries below preserve the release history of the former server. That
 implementation and its dedicated documentation have been removed from this
 repository; older `Unreleased` headings below refer to that legacy release
-stream, not to the current 1.1.0 server.
+stream, not to the current 1.1.1 server.
 
 ## v4.0.1 — 2026-05-03
 
